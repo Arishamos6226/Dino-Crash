@@ -1,98 +1,259 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const GAME_WIDTH = 360;
+const GAME_HEIGHT = 220;
+const GROUND_HEIGHT = 36;
+
+const DINO_X = 40;
+const DINO_SIZE = 32;
+const CACTUS_WIDTH = 18;
+const CACTUS_HEIGHT = 42;
+
+const GRAVITY = 0.85;
+const JUMP_VELOCITY = -13;
+const INITIAL_SPEED = 5;
+const MAX_SPEED = 11;
+
+type Obstacle = {
+  id: number;
+  x: number;
+};
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [dinoY, setDinoY] = useState(0);
+  const [dinoVelocity, setDinoVelocity] = useState(0);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([{ id: 1, x: GAME_WIDTH + 120 }]);
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [speed, setSpeed] = useState(INITIAL_SPEED);
+  const nextObstacleIdRef = useRef(2);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const dinoTop = GAME_HEIGHT - GROUND_HEIGHT - DINO_SIZE - dinoY;
+  const dinoBottom = GAME_HEIGHT - GROUND_HEIGHT - dinoY;
+
+  const jump = useCallback(() => {
+    if (gameOver) {
+      setDinoY(0);
+      setDinoVelocity(0);
+      setObstacles([{ id: 1, x: GAME_WIDTH + 120 }]);
+      nextObstacleIdRef.current = 2;
+      setScore(0);
+      setSpeed(INITIAL_SPEED);
+      setGameOver(false);
+      return;
+    }
+
+    if (dinoY <= 0.01) {
+      setDinoVelocity(JUMP_VELOCITY);
+    }
+  }, [dinoY, gameOver]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space' || event.code === 'ArrowUp') {
+        event.preventDefault();
+        jump();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }
+  }, [jump]);
+
+  useEffect(() => {
+    if (gameOver) return;
+
+    const tick = setInterval(() => {
+      setDinoVelocity((currentVelocity) => {
+        const nextVelocity = currentVelocity + GRAVITY;
+        setDinoY((currentY) => {
+          const nextY = currentY - nextVelocity;
+          if (nextY <= 0) {
+            setDinoVelocity(0);
+            return 0;
+          }
+          return nextY;
+        });
+        return nextVelocity;
+      });
+
+      setObstacles((currentObstacles) => {
+        const moved = currentObstacles
+          .map((obstacle) => ({ ...obstacle, x: obstacle.x - speed }))
+          .filter((obstacle) => obstacle.x + CACTUS_WIDTH > -8);
+
+        const lastObstacle = moved[moved.length - 1];
+        const shouldSpawn = !lastObstacle || lastObstacle.x < GAME_WIDTH - (140 + Math.random() * 120);
+
+        if (shouldSpawn) {
+          moved.push({ id: nextObstacleIdRef.current, x: GAME_WIDTH + 20 });
+          nextObstacleIdRef.current += 1;
+        }
+
+        return moved;
+      });
+
+      setSpeed((current) => Math.min(MAX_SPEED, current + 0.0035));
+      setScore((current) => current + 1);
+    }, 16);
+
+    return () => clearInterval(tick);
+  }, [gameOver, speed]);
+
+  useEffect(() => {
+    if (gameOver) return;
+
+    const dinoLeft = DINO_X;
+    const dinoRight = DINO_X + DINO_SIZE;
+    const cactusTop = GAME_HEIGHT - GROUND_HEIGHT - CACTUS_HEIGHT;
+    const cactusBottom = GAME_HEIGHT - GROUND_HEIGHT;
+
+    const hit = obstacles.some((obstacle) => {
+      const cactusLeft = obstacle.x;
+      const cactusRight = obstacle.x + CACTUS_WIDTH;
+      const overlapX = dinoRight > cactusLeft && dinoLeft < cactusRight;
+      const overlapY = dinoBottom > cactusTop && dinoTop < cactusBottom;
+      return overlapX && overlapY;
+    });
+
+    if (hit) {
+      setGameOver(true);
+      setHighScore((current) => Math.max(current, score));
+    }
+  }, [dinoBottom, dinoTop, gameOver, obstacles, score]);
+
+  const shownScore = useMemo(() => Math.floor(score / 6), [score]);
+
+  return (
+    <View style={styles.page}>
+      <Text style={styles.title}>Dino Offline</Text>
+      <Text style={styles.subtitle}>Tippe oder druecke Space zum Springen</Text>
+
+      <Pressable onPress={jump} style={styles.gameArea}>
+        <View style={styles.sky} />
+        <View style={styles.ground} />
+
+        <View style={[styles.dino, { left: DINO_X, top: dinoTop }]}>
+          <View style={styles.dinoEye} />
+        </View>
+
+        {obstacles.map((obstacle) => (
+          <View key={obstacle.id} style={[styles.cactus, { left: obstacle.x }]} />
+        ))}
+
+        <View style={styles.scoreBox}>
+          <Text style={styles.scoreText}>Score: {shownScore}</Text>
+          <Text style={styles.scoreText}>Best: {Math.floor(highScore / 6)}</Text>
+        </View>
+
+        {gameOver && (
+          <View style={styles.overlay}>
+            <Text style={styles.gameOver}>Game Over</Text>
+            <Text style={styles.restart}>Tippe zum Neustarten</Text>
+          </View>
+        )}
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  page: {
+    flex: 1,
+    backgroundColor: '#f8f9fb',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#121212',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  subtitle: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 10,
+  },
+  gameArea: {
+    width: GAME_WIDTH,
+    maxWidth: '100%',
+    height: GAME_HEIGHT,
+    borderWidth: 2,
+    borderColor: '#1c1c1c',
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  sky: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fefefe',
+  },
+  ground: {
     position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: GROUND_HEIGHT,
+    borderTopWidth: 2,
+    borderTopColor: '#1c1c1c',
+    backgroundColor: '#f1f1f1',
+  },
+  dino: {
+    position: 'absolute',
+    width: DINO_SIZE,
+    height: DINO_SIZE,
+    backgroundColor: '#202020',
+    borderRadius: 4,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    padding: 5,
+  },
+  dinoEye: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#ffffff',
+  },
+  cactus: {
+    position: 'absolute',
+    width: CACTUS_WIDTH,
+    height: CACTUS_HEIGHT,
+    bottom: GROUND_HEIGHT,
+    backgroundColor: '#2c8b3f',
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+  },
+  scoreBox: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    alignItems: 'flex-end',
+  },
+  scoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#171717',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(250, 250, 250, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  gameOver: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111',
+  },
+  restart: {
+    fontSize: 14,
+    color: '#222',
   },
 });
