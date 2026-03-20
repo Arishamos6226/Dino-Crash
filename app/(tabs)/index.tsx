@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-const GAME_WIDTH = 360;
-const GAME_HEIGHT = 220;
+const GAME_WIDTH = 480;
+const GAME_HEIGHT = 300;
 const GROUND_HEIGHT = 36;
 
 const DINO_X = 40;
