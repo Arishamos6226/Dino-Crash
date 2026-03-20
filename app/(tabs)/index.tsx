@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 const GAME_WIDTH = 360;
 const GAME_HEIGHT = 220;
 const GROUND_HEIGHT = 36;
 
 const DINO_X = 40;
-const DINO_SIZE = 32;
+const DINO_WIDTH = 44;
+const DINO_HEIGHT = 44;
+const DINO_HITBOX_WIDTH = 30;
+const DINO_HITBOX_HEIGHT = 34;
+const DINO_HITBOX_OFFSET_X = 8;
 const CACTUS_WIDTH = 18;
 const CACTUS_HEIGHT = 42;
 
@@ -30,7 +34,7 @@ export default function HomeScreen() {
   const [speed, setSpeed] = useState(INITIAL_SPEED);
   const nextObstacleIdRef = useRef(2);
 
-  const dinoTop = GAME_HEIGHT - GROUND_HEIGHT - DINO_SIZE - dinoY;
+  const dinoTop = GAME_HEIGHT - GROUND_HEIGHT - DINO_HEIGHT - dinoY;
   const dinoBottom = GAME_HEIGHT - GROUND_HEIGHT - dinoY;
 
   const jump = useCallback(() => {
@@ -107,8 +111,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (gameOver) return;
 
-    const dinoLeft = DINO_X;
-    const dinoRight = DINO_X + DINO_SIZE;
+    const dinoLeft = DINO_X + DINO_HITBOX_OFFSET_X;
+    const dinoRight = dinoLeft + DINO_HITBOX_WIDTH;
+    const dinoHitboxTop = dinoBottom - DINO_HITBOX_HEIGHT;
     const cactusTop = GAME_HEIGHT - GROUND_HEIGHT - CACTUS_HEIGHT;
     const cactusBottom = GAME_HEIGHT - GROUND_HEIGHT;
 
@@ -116,7 +121,7 @@ export default function HomeScreen() {
       const cactusLeft = obstacle.x;
       const cactusRight = obstacle.x + CACTUS_WIDTH;
       const overlapX = dinoRight > cactusLeft && dinoLeft < cactusRight;
-      const overlapY = dinoBottom > cactusTop && dinoTop < cactusBottom;
+      const overlapY = dinoBottom > cactusTop && dinoHitboxTop < cactusBottom;
       return overlapX && overlapY;
     });
 
@@ -124,7 +129,7 @@ export default function HomeScreen() {
       setGameOver(true);
       setHighScore((current) => Math.max(current, score));
     }
-  }, [dinoBottom, dinoTop, gameOver, obstacles, score]);
+  }, [dinoBottom, gameOver, obstacles, score]);
 
   const shownScore = useMemo(() => Math.floor(score / 6), [score]);
 
@@ -137,9 +142,10 @@ export default function HomeScreen() {
         <View style={styles.sky} />
         <View style={styles.ground} />
 
-        <View style={[styles.dino, { left: DINO_X, top: dinoTop }]}>
-          <View style={styles.dinoEye} />
-        </View>
+        <Image
+          source={require('../../assets/images/chrome-dino-transparent.png')}
+          style={[styles.dinoImage, { left: DINO_X, top: dinoTop }]}
+        />
 
         {obstacles.map((obstacle) => (
           <View key={obstacle.id} style={[styles.cactus, { left: obstacle.x }]} />
@@ -204,21 +210,10 @@ const styles = StyleSheet.create({
     borderTopColor: '#1c1c1c',
     backgroundColor: '#f1f1f1',
   },
-  dino: {
+  dinoImage: {
     position: 'absolute',
-    width: DINO_SIZE,
-    height: DINO_SIZE,
-    backgroundColor: '#202020',
-    borderRadius: 4,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    padding: 5,
-  },
-  dinoEye: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
+    width: DINO_WIDTH,
+    height: DINO_HEIGHT,
   },
   cactus: {
     position: 'absolute',
