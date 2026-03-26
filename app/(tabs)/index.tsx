@@ -1,165 +1,167 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-
-const GAME_WIDTH = 480;
-const GAME_HEIGHT = 300;
-const GROUND_HEIGHT = 36;
-
-const DINO_X = 40;
-const DINO_WIDTH = 44;
-const DINO_HEIGHT = 44;
-const DINO_HITBOX_WIDTH = 30;
-const DINO_HITBOX_HEIGHT = 34;
-const DINO_HITBOX_OFFSET_X = 8;
-const CACTUS_WIDTH = 18;
-const CACTUS_HEIGHT = 42;
-
-const GRAVITY = 0.85;
-const JUMP_VELOCITY = -13;
-const INITIAL_SPEED = 5;
-const MAX_SPEED = 11;
-
-type Obstacle = {
-  id: number;
-  x: number;
-};
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { GameEngine } from '../../game/GameEngine';
+import { GAME } from '../../game/constants';
+import type { RenderState } from '../../game/types';
+import { DinoSprite } from '../../game/components/DinoSprite';
+import { ObstacleSprite } from '../../game/components/ObstacleSprite';
+import { CloudSprite } from '../../game/components/CloudSprite';
 
 export default function HomeScreen() {
-  const [dinoY, setDinoY] = useState(0);
-  const [dinoVelocity, setDinoVelocity] = useState(0);
-  const [obstacles, setObstacles] = useState<Obstacle[]>([{ id: 1, x: GAME_WIDTH + 120 }]);
-  const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [speed, setSpeed] = useState(INITIAL_SPEED);
-  const nextObstacleIdRef = useRef(2);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const engineRef = useRef<GameEngine>(new GameEngine());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [renderState, setRenderState] = useState<RenderState>(
+    engineRef.current.getState()
+  );
 
-  const dinoTop = GAME_HEIGHT - GROUND_HEIGHT - DINO_HEIGHT - dinoY;
-  const dinoBottom = GAME_HEIGHT - GROUND_HEIGHT - dinoY;
+  // Calculate responsive game dimensions (mobile-first)
+  // Use most of the screen width with padding, maintain aspect ratio
+  const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
+  const maxGameWidth = Math.min(windowWidth - 32, 800); // Max 800px or screen width - padding
+  const maxGameHeight = windowHeight * 0.4; // Use 40% of screen height
 
-  const jump = useCallback(() => {
-    if (gameOver) {
-      setDinoY(0);
-      setDinoVelocity(0);
-      setObstacles([{ id: 1, x: GAME_WIDTH + 120 }]);
-      nextObstacleIdRef.current = 2;
-      setScore(0);
-      setSpeed(INITIAL_SPEED);
-      setGameOver(false);
-      return;
-    }
+  // Calculate actual dimensions maintaining aspect ratio
+  let gameWidth = maxGameWidth;
+  let gameHeight = gameWidth / aspectRatio;
 
-    if (dinoY <= 0.01) {
-      setDinoVelocity(JUMP_VELOCITY);
-    }
-  }, [dinoY, gameOver]);
+  // If height is too large, recalculate based on height
+  if (gameHeight > maxGameHeight) {
+    gameHeight = maxGameHeight;
+    gameWidth = gameHeight * aspectRatio;
+  }
 
+  // Calculate scale factor for positioning elements
+  const scale = gameWidth / GAME.WIDTH;
+
+  const handleJump = useCallback(() => {
+    engineRef.current.jump();
+  }, []);
+
+  const handleDuck = useCallback((isDucking: boolean) => {
+    engineRef.current.duck(isDucking);
+  }, []);
+
+  // Keyboard controls
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'Space' || event.code === 'ArrowUp') {
         event.preventDefault();
-        jump();
+        handleJump();
+      } else if (event.code === 'ArrowDown') {
+        event.preventDefault();
+        handleDuck(true);
+      }
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'ArrowDown') {
+        event.preventDefault();
+        handleDuck(false);
       }
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('keydown', onKeyDown);
-      return () => window.removeEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+      return () => {
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('keyup', onKeyUp);
+      };
     }
-  }, [jump]);
+  }, [handleJump, handleDuck]);
 
+  // Game loop - using requestAnimationFrame for better performance
   useEffect(() => {
-    if (gameOver) return;
+    let lastTime = Date.now();
+    let animationFrameId: number;
 
-    const tick = setInterval(() => {
-      setDinoVelocity((currentVelocity) => {
-        const nextVelocity = currentVelocity + GRAVITY;
-        setDinoY((currentY) => {
-          const nextY = currentY - nextVelocity;
-          if (nextY <= 0) {
-            setDinoVelocity(0);
-            return 0;
-          }
-          return nextY;
-        });
-        return nextVelocity;
-      });
+    const gameLoop = () => {
+      const currentTime = Date.now();
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
 
-      setObstacles((currentObstacles) => {
-        const moved = currentObstacles
-          .map((obstacle) => ({ ...obstacle, x: obstacle.x - speed }))
-          .filter((obstacle) => obstacle.x + CACTUS_WIDTH > -8);
+      engineRef.current.update(deltaTime);
+      setRenderState(engineRef.current.getState());
 
-        const lastObstacle = moved[moved.length - 1];
-        const shouldSpawn = !lastObstacle || lastObstacle.x < GAME_WIDTH - (140 + Math.random() * 120);
+      animationFrameId = requestAnimationFrame(gameLoop);
+    };
 
-        if (shouldSpawn) {
-          moved.push({ id: nextObstacleIdRef.current, x: GAME_WIDTH + 20 });
-          nextObstacleIdRef.current += 1;
-        }
+    animationFrameId = requestAnimationFrame(gameLoop);
 
-        return moved;
-      });
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
-      setSpeed((current) => Math.min(MAX_SPEED, current + 0.0035));
-      setScore((current) => current + 1);
-    }, 16);
+  const { dino, obstacles, clouds, score, highScore, gameState, nightModeFade } = renderState;
 
-    return () => clearInterval(tick);
-  }, [gameOver, speed]);
-
-  useEffect(() => {
-    if (gameOver) return;
-
-    const dinoLeft = DINO_X + DINO_HITBOX_OFFSET_X;
-    const dinoRight = dinoLeft + DINO_HITBOX_WIDTH;
-    const dinoHitboxTop = dinoBottom - DINO_HITBOX_HEIGHT;
-    const cactusTop = GAME_HEIGHT - GROUND_HEIGHT - CACTUS_HEIGHT;
-    const cactusBottom = GAME_HEIGHT - GROUND_HEIGHT;
-
-    const hit = obstacles.some((obstacle) => {
-      const cactusLeft = obstacle.x;
-      const cactusRight = obstacle.x + CACTUS_WIDTH;
-      const overlapX = dinoRight > cactusLeft && dinoLeft < cactusRight;
-      const overlapY = dinoBottom > cactusTop && dinoHitboxTop < cactusBottom;
-      return overlapX && overlapY;
-    });
-
-    if (hit) {
-      setGameOver(true);
-      setHighScore((current) => Math.max(current, score));
-    }
-  }, [dinoBottom, gameOver, obstacles, score]);
-
-  const shownScore = useMemo(() => Math.floor(score / 6), [score]);
+  // Calculate dino position (convert from game coordinates to screen coordinates)
+  // In game coordinates, y=0 means on the ground
+  // In React Native, bottom property is distance from bottom of container
+  // Ground is GAME.GROUND_HEIGHT pixels from bottom, so dino sits on top of it
+  const dinoBottom = GAME.GROUND_HEIGHT + dino.y;
 
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>Dino Offline</Text>
-      <Text style={styles.subtitle}>Tippe oder druecke Space zum Springen</Text>
+      <Text style={styles.title}>Dino-Crash</Text>
+      <Text style={styles.subtitle}>Tap to Jump • Swipe Down to Duck</Text>
 
-      <Pressable onPress={jump} style={styles.gameArea}>
-        <View style={styles.sky} />
-        <View style={styles.ground} />
-
-        <Image
-          source={require('../../assets/images/chrome-dino-transparent.png')}
-          style={[styles.dinoImage, { left: DINO_X, top: dinoTop }]}
+      <Pressable
+        onPress={handleJump}
+        style={[
+          styles.gameArea,
+          {
+            width: gameWidth,
+            height: gameHeight,
+          }
+        ]}
+      >
+        <View
+          style={[
+            styles.sky,
+            nightModeFade > 0 && {
+              backgroundColor: `rgba(32, 32, 32, ${nightModeFade})`,
+            },
+          ]}
+        />
+        <View
+          style={[
+            styles.ground,
+            {
+              height: GAME.GROUND_HEIGHT * scale,
+              borderTopWidth: 2 * scale,
+            }
+          ]}
         />
 
-        {obstacles.map((obstacle) => (
-          <View key={obstacle.id} style={[styles.cactus, { left: obstacle.x }]} />
+        {/* Clouds */}
+        {clouds.map((cloud) => (
+          <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
         ))}
 
-        <View style={styles.scoreBox}>
-          <Text style={styles.scoreText}>Score: {shownScore}</Text>
-          <Text style={styles.scoreText}>Best: {Math.floor(highScore / 6)}</Text>
+        {/* Dino */}
+        <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
+
+        {/* Obstacles */}
+        {obstacles.map((obstacle) => {
+          // obstacle.y is height above ground in game coordinates
+          // Convert to React Native bottom positioning
+          const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
+          return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} scale={scale} />;
+        })}
+
+        {/* Score */}
+        <View style={[styles.scoreBox, { top: 4 * scale, right: 4 * scale, gap: 8 * scale }]}>
+          <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>HI {String(highScore).padStart(5, '0')}</Text>
+          <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>{String(score).padStart(5, '0')}</Text>
         </View>
 
-        {gameOver && (
+        {/* Game Over Overlay */}
+        {gameState === 'CRASHED' && (
           <View style={styles.overlay}>
-            <Text style={styles.gameOver}>Game Over</Text>
-            <Text style={styles.restart}>Tippe zum Neustarten</Text>
+            <Text style={[styles.gameOver, { fontSize: 24 * Math.min(scale, 1.5) }]}>G A M E  O V E R</Text>
+            <Text style={[styles.restart, { fontSize: 12 * Math.min(scale, 1.5) }]}>Tap to Restart</Text>
           </View>
         )}
       </Pressable>
@@ -174,81 +176,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    gap: 8,
+    gap: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#121212',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: '#444',
-    marginBottom: 10,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   gameArea: {
-    width: GAME_WIDTH,
-    maxWidth: '100%',
-    height: GAME_HEIGHT,
+    // width and height set dynamically via inline styles
     borderWidth: 2,
-    borderColor: '#1c1c1c',
+    borderColor: '#535353',
     backgroundColor: '#ffffff',
     overflow: 'hidden',
     position: 'relative',
+    borderRadius: 8,
   },
   sky: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fefefe',
+    backgroundColor: '#f7f7f7',
   },
   ground: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: GROUND_HEIGHT,
-    borderTopWidth: 2,
-    borderTopColor: '#1c1c1c',
-    backgroundColor: '#f1f1f1',
-  },
-  dinoImage: {
-    position: 'absolute',
-    width: DINO_WIDTH,
-    height: DINO_HEIGHT,
-  },
-  cactus: {
-    position: 'absolute',
-    width: CACTUS_WIDTH,
-    height: CACTUS_HEIGHT,
-    bottom: GROUND_HEIGHT,
-    backgroundColor: '#2c8b3f',
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
+    // height and borderTopWidth set dynamically
+    borderTopColor: '#535353',
+    backgroundColor: '#f7f7f7',
   },
   scoreBox: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    alignItems: 'flex-end',
+    // top, right, gap set dynamically
+    flexDirection: 'row',
   },
   scoreText: {
-    fontSize: 14,
+    // fontSize set dynamically
     fontWeight: '600',
-    color: '#171717',
+    color: '#535353',
+    fontFamily: 'monospace',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(250, 250, 250, 0.8)',
+    backgroundColor: 'rgba(247, 247, 247, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 8,
   },
   gameOver: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111',
+    // fontSize set dynamically
+    fontWeight: '700',
+    color: '#535353',
+    letterSpacing: 2,
   },
   restart: {
-    fontSize: 14,
-    color: '#222',
+    // fontSize set dynamically
+    color: '#535353',
   },
 });
