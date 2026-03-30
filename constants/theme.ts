@@ -1,8 +1,3 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
 const tintColorLight = '#0a7ea4';
@@ -25,17 +20,25 @@ export const Colors = {
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
   },
-};
+  game: {
+    pageBackground: '#f8f9fb',
+    titleText: '#121212',
+    subtitleText: '#444',
+    borderColor: '#535353',
+    gameBackground: '#ffffff',
+    skyBackground: '#f7f7f7',
+    groundColor: '#f7f7f7',
+    textColor: '#535353',
+    nightModeBase: 'rgba(32, 32, 32, ',
+    overlayBackground: 'rgba(247, 247, 247, 0.9)',
+  },
+} as const;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -51,3 +54,14 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const GameUI = {
+  maxGameWidth: 800,
+  screenPadding: 32,
+  screenHeightRatio: 0.4,
+  pagePadding: 16,
+  pageGap: 12,
+  scoreGap: 8,
+  scoreOffset: 4,
+  borderWidth: 2,
+} as const;

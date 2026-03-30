@@ -53,7 +53,7 @@ export class CactusSmall extends Obstacle {
     super(id, 'CACTUS_SMALL', x, variant);
     this.width = OBSTACLE.CACTUS_SMALL.WIDTH;
     this.height = OBSTACLE.CACTUS_SMALL.HEIGHT;
-    this.y = 0; // Cacti sit on the ground (y=0 in game coordinates)
+    this.y = 0;
   }
 
   getCollisionBoxes(): CollisionBox[] {
@@ -71,7 +71,7 @@ export class CactusLarge extends Obstacle {
     super(id, 'CACTUS_LARGE', x, variant);
     this.width = OBSTACLE.CACTUS_LARGE.WIDTH;
     this.height = OBSTACLE.CACTUS_LARGE.HEIGHT;
-    this.y = 0; // Cacti sit on the ground (y=0 in game coordinates)
+    this.y = 0;
   }
 
   getCollisionBoxes(): CollisionBox[] {
@@ -92,15 +92,12 @@ export class Pterodactyl extends Obstacle {
     this.width = OBSTACLE.PTERODACTYL.WIDTH;
     this.height = OBSTACLE.PTERODACTYL.HEIGHT;
     this.heightIndex = Math.min(heightIndex, OBSTACLE.PTERODACTYL.Y_POS.length - 1);
-    // Pterodactyl flies at different heights above ground
-    // Y_POS_OFFSET gives the height above ground level
     this.y = OBSTACLE.PTERODACTYL.Y_POS_OFFSET[this.heightIndex];
   }
 
   update(speed: number, deltaTime: number) {
     super.update(speed, deltaTime);
 
-    // Animate wing flapping
     this.frameTimer += deltaTime;
     if (this.frameTimer >= OBSTACLE.PTERODACTYL.FRAME_RATE) {
       this.currentFrame = (this.currentFrame + 1) % OBSTACLE.PTERODACTYL.NUM_FRAMES;

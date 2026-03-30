@@ -4,7 +4,6 @@ import { Sprite } from './Sprite';
 import { SPRITES } from '../sprites';
 import type { ObstacleState } from '../types';
 
-// Temporary: Render as colored boxes for debugging
 const DEBUG_MODE = false;
 
 interface ObstacleSpriteProps {
@@ -13,43 +12,21 @@ interface ObstacleSpriteProps {
   scale?: number;
 }
 
-export function ObstacleSprite({ obstacle, bottom, scale = 1 }: ObstacleSpriteProps) {
-  let sprite: { x: number; y: number; width: number; height: number };
+const SPRITE_MAP = {
+  CACTUS_SMALL: [SPRITES.CACTUS.SMALL_1, SPRITES.CACTUS.SMALL_2, SPRITES.CACTUS.SMALL_3],
+  CACTUS_LARGE: [SPRITES.CACTUS.LARGE_1, SPRITES.CACTUS.LARGE_2, SPRITES.CACTUS.LARGE_3],
+  PTERODACTYL: [SPRITES.PTERODACTYL.FLYING_1, SPRITES.PTERODACTYL.FLYING_2],
+} as const;
 
-  if (obstacle.type === 'CACTUS_SMALL') {
-    switch (obstacle.variant) {
-      case 1:
-        sprite = SPRITES.CACTUS.SMALL_1;
-        break;
-      case 2:
-        sprite = SPRITES.CACTUS.SMALL_2;
-        break;
-      case 3:
-      default:
-        sprite = SPRITES.CACTUS.SMALL_3;
-        break;
-    }
-  } else if (obstacle.type === 'CACTUS_LARGE') {
-    switch (obstacle.variant) {
-      case 1:
-        sprite = SPRITES.CACTUS.LARGE_1;
-        break;
-      case 2:
-        sprite = SPRITES.CACTUS.LARGE_2;
-        break;
-      case 3:
-      default:
-        sprite = SPRITES.CACTUS.LARGE_3;
-        break;
-    }
-  } else if (obstacle.type === 'PTERODACTYL') {
-    sprite = obstacle.currentFrame === 0 ? SPRITES.PTERODACTYL.FLYING_1 : SPRITES.PTERODACTYL.FLYING_2;
-  } else {
-    return null;
-  }
+export function ObstacleSprite({ obstacle, bottom, scale = 1 }: ObstacleSpriteProps) {
+  const sprites = SPRITE_MAP[obstacle.type];
+  if (!sprites) return null;
+
+  const sprite = obstacle.type === 'PTERODACTYL'
+    ? sprites[obstacle.currentFrame]
+    : sprites[obstacle.variant - 1] || sprites[0];
 
   if (DEBUG_MODE) {
-    // Render as colored box for debugging
     return (
       <View
         style={{

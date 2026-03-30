@@ -24,7 +24,6 @@ export class CollisionSystem {
     for (const obstacle of nearbyObstacles) {
       const obstacleBoxes = obstacle.getCollisionBoxes();
 
-      // Check each dino collision box against each obstacle collision box
       for (const dinoBox of dinoBoxes) {
         for (const obstacleBox of obstacleBoxes) {
           if (this.boxCompare(dinoBox, obstacleBox)) {

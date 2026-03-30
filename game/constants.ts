@@ -1,15 +1,13 @@
-// Game physics constants (matching original Chrome T-Rex game)
 export const PHYSICS = {
   GRAVITY: 0.6,
   INITIAL_JUMP_VELOCITY: -12,
-  INITIAL_SPEED: 4, // Reduced from 6 for slower start
+  INITIAL_SPEED: 4,
   MAX_SPEED: 13,
-  ACCELERATION: 0.0008, // Adjusted for better progression
+  ACCELERATION: 0.0008,
   FPS: 60,
-  DROP_VELOCITY: -5, // For ducking
+  DROP_VELOCITY: -5,
 } as const;
 
-// Game dimensions
 export const GAME = {
   WIDTH: 600,
   HEIGHT: 150,
@@ -18,7 +16,6 @@ export const GAME = {
   CLEAR_TIME: 3000,
 } as const;
 
-// Dino character constants
 export const DINO = {
   WIDTH: 44,
   HEIGHT: 47,
@@ -28,8 +25,8 @@ export const DINO = {
   INIITAL_JUMP_VELOCITY: -10,
   MAX_JUMP_HEIGHT: 30,
   MIN_JUMP_HEIGHT: 30,
-  GROUND_Y_POS: 93, // Position on ground
-  SPRITE_WIDTH: 262, // Total sprite sheet width for dino
+  GROUND_Y_POS: 93,
+  SPRITE_WIDTH: 262,
   COLLISION_BOX: {
     WIDTH: 34,
     HEIGHT: 47,
@@ -44,12 +41,11 @@ export const DINO = {
   },
 } as const;
 
-// Obstacle types and constants
 export const OBSTACLE = {
   CACTUS_SMALL: {
     WIDTH: 17,
     HEIGHT: 35,
-    Y_POS: 103, // Position from bottom (150 - 12 ground - 35 height)
+    Y_POS: 103,
     MULTIPLE_SPEED: 4,
     MIN_GAP: 120,
     MIN_SPEED: 0,
@@ -62,7 +58,7 @@ export const OBSTACLE = {
   CACTUS_LARGE: {
     WIDTH: 25,
     HEIGHT: 50,
-    Y_POS: 88, // Position from bottom (150 - 12 ground - 50 height)
+    Y_POS: 88,
     MULTIPLE_SPEED: 7,
     MIN_GAP: 120,
     MIN_SPEED: 0,
@@ -75,13 +71,14 @@ export const OBSTACLE = {
   PTERODACTYL: {
     WIDTH: 46,
     HEIGHT: 40,
-    Y_POS: [100, 75, 50], // Three different flying heights from bottom
+    Y_POS: [100, 75, 50],
     Y_POS_OFFSET: [0, 25, 50],
     MULTIPLE_SPEED: 999,
     MIN_GAP: 200,
-    MIN_SPEED: 7.0, // Birds appear earlier in the game (was 9.0)
+    MIN_SPAWN_TIME: 5000,
+    SPAWN_CHANCE: 0.5,
     NUM_FRAMES: 2,
-    FRAME_RATE: 1000 / 6, // 6 FPS wing flapping
+    FRAME_RATE: 1000 / 6,
     COLLISION_BOXES: [
       { x: 15, y: 15, width: 16, height: 5 },
       { x: 18, y: 21, width: 24, height: 6 },
@@ -89,13 +86,12 @@ export const OBSTACLE = {
       { x: 6, y: 31, width: 12, height: 4 },
     ],
   },
-  MAX_OBSTACLE_LENGTH: 3, // Maximum obstacles that can appear consecutively
+  MAX_OBSTACLE_LENGTH: 3,
   MAX_GAP_COEFFICIENT: 1.5,
   MIN_GAP_COEFFICIENT: 0.6,
   GAP_COEFFICIENT: 0.6,
 } as const;
 
-// Cloud constants
 export const CLOUD = {
   WIDTH: 46,
   HEIGHT: 14,
@@ -107,13 +103,11 @@ export const CLOUD = {
   BG_CLOUD_SPEED: 0.2,
 } as const;
 
-// Horizon constants
 export const HORIZON = {
   HEIGHT: 12,
   BUMPY_THRESHOLD: 0.3,
 } as const;
 
-// Scoring constants
 export const SCORE = {
   INITIAL: 0,
   MAX: 99999,
@@ -122,23 +116,16 @@ export const SCORE = {
   FLASH_DURATION: 250,
 } as const;
 
-// Night mode constants
 export const NIGHT_MODE = {
   FADE_SPEED: 0.035,
   INVERT_DISTANCE: 700,
-  INVERT_FADE_DURATION: 12000, // 12 seconds
+  INVERT_FADE_DURATION: 12000,
 } as const;
 
-// Speeds
 export const SPEED = {
   DROP_VELOCITY: -5,
 } as const;
 
-// Game states
 export type GameState = 'WAITING' | 'RUNNING' | 'CRASHED';
-
-// Obstacle types
 export type ObstacleType = 'CACTUS_SMALL' | 'CACTUS_LARGE' | 'PTERODACTYL';
-
-// Dino status
 export type DinoStatus = 'WAITING' | 'RUNNING' | 'JUMPING' | 'DUCKING' | 'CRASHED';

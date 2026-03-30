@@ -12,14 +12,12 @@ export class ScoreSystem {
   }
 
   update(speed: number, deltaTime: number): boolean {
-    // Accumulate distance based on speed
     this.distance += speed * deltaTime * SCORE.DISTANCE_MULTIPLIER;
 
-    // Check if milestone reached
     const currentMilestone = Math.floor(this.distance / SCORE.ACHIEVEMENT_DISTANCE);
     if (currentMilestone > this.lastMilestone) {
       this.lastMilestone = currentMilestone;
-      return true; // Milestone reached
+      return true;
     }
 
     return false;

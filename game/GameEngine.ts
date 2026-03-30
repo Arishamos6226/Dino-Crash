@@ -20,12 +20,11 @@ export class GameEngine {
   private currentSpeed: number;
   private gameState: GameState;
   private nightModeFade: number;
-  private lastInvertDistance: number;
-  private timeSinceStart: number; // Track time since game started
+  private timeSinceStart: number;
 
   constructor() {
     this.dino = new Dino();
-    this.obstacles = []; // Start with no obstacles
+    this.obstacles = [];
     this.clouds = [];
 
     this.collisionSystem = new CollisionSystem();
@@ -45,26 +44,19 @@ export class GameEngine {
       return;
     }
 
-    // Track time since start
     this.timeSinceStart += deltaTime;
 
-    // Update speed (accelerate)
     this.currentSpeed = Math.min(
       PHYSICS.MAX_SPEED,
       this.currentSpeed + PHYSICS.ACCELERATION
     );
 
-    // Update dino
     this.dino.update(deltaTime);
     this.physicsSystem.applyGravity(this.dino);
 
-    // Update obstacles
     this.obstacles.forEach((obstacle) => obstacle.update(this.currentSpeed, deltaTime));
-
-    // Update clouds
     this.clouds.forEach((cloud) => cloud.update(deltaTime));
 
-    // Spawn new obstacles (but wait 1 second after starting)
     if (this.timeSinceStart > 1000) {
       const newObstacle = this.spawnSystem.maybeSpawnObstacle(
         this.obstacles,
@@ -76,28 +68,23 @@ export class GameEngine {
       }
     }
 
-    // Spawn new clouds
     const newCloud = this.spawnSystem.maybeSpawnCloud(this.clouds);
     if (newCloud) {
       this.clouds.push(newCloud);
     }
 
-    // Remove off-screen obstacles and clouds
     this.obstacles = this.obstacles.filter((obs) => !obs.isOffScreen());
     this.clouds = this.clouds.filter((cloud) => !cloud.isOffScreen());
 
-    // Check collision
     if (this.collisionSystem.checkCollision(this.dino, this.obstacles)) {
       this.crash();
     }
 
-    // Update score
     const milestoneReached = this.scoreSystem.update(this.currentSpeed, deltaTime);
     if (milestoneReached) {
       // TODO: Play milestone sound
     }
 
-    // Update night mode
     this.updateNightMode();
   }
 
@@ -106,10 +93,8 @@ export class GameEngine {
     const cycleDistance = NIGHT_MODE.INVERT_DISTANCE * 2;
     const positionInCycle = distance % cycleDistance;
 
-    // Determine if we should be in night mode
     const shouldBeNight = positionInCycle < NIGHT_MODE.INVERT_DISTANCE;
 
-    // Gradually fade in/out
     if (shouldBeNight && this.nightModeFade < 1) {
       this.nightModeFade = Math.min(1, this.nightModeFade + NIGHT_MODE.FADE_SPEED);
     } else if (!shouldBeNight && this.nightModeFade > 0) {
@@ -121,7 +106,7 @@ export class GameEngine {
     if (this.gameState === 'WAITING') {
       this.gameState = 'RUNNING';
       this.dino.status = 'RUNNING';
-      this.timeSinceStart = 0; // Reset timer when starting
+      this.timeSinceStart = 0;
     }
   }
 
@@ -159,7 +144,6 @@ export class GameEngine {
     this.currentSpeed = PHYSICS.INITIAL_SPEED;
     this.gameState = 'WAITING';
     this.nightModeFade = 0;
-    this.lastInvertDistance = 0;
     this.timeSinceStart = 0;
     this.scoreSystem.reset();
     this.spawnSystem.reset();

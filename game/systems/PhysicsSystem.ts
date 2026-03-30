@@ -7,7 +7,6 @@ export class PhysicsSystem {
       dino.velocityY += PHYSICS.GRAVITY;
       dino.y -= dino.velocityY;
 
-      // Ground collision
       if (dino.y <= 0) {
         dino.y = 0;
         dino.velocityY = 0;

@@ -27,25 +27,22 @@ export class Dino {
   }
 
   update(deltaTime: number) {
-    // Update animation frame for running
     if (this.status === 'RUNNING' || this.status === 'DUCKING') {
       this.frameTimer += deltaTime;
-      if (this.frameTimer >= 1000 / 8) { // 8 FPS for running animation
+      if (this.frameTimer >= 1000 / 8) {
         this.currentFrame = (this.currentFrame + 1) % 2;
         this.frameTimer = 0;
       }
     }
 
-    // Handle blinking when waiting
     if (this.status === 'WAITING') {
       this.blinkTimer += deltaTime;
-      if (this.blinkTimer >= 3000) { // Blink every 3 seconds
+      if (this.blinkTimer >= 3000) {
         this.blinkCount = (this.blinkCount + 1) % 2;
         this.blinkTimer = 0;
       }
     }
 
-    // Update jumping status
     if (this.y > 0) {
       this.isJumping = true;
       this.status = 'JUMPING';
