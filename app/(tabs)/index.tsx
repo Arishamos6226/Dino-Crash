@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions, Platform } from 'react-native';
 import { GameEngine } from '../../game/GameEngine';
 import { GAME } from '../../game/constants';
 import type { RenderState } from '../../game/types';
@@ -14,6 +14,10 @@ export default function HomeScreen() {
   const [renderState, setRenderState] = useState<RenderState>(
     engineRef.current.getState()
   );
+  const [isDucking, setIsDucking] = useState(false);
+  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pressStartTimeRef = useRef<number>(0);
+  const HOLD_DURATION = 200; // ms to distinguish tap from hold
 
   const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
   const maxGameWidth = Math.min(windowWidth - GameUI.screenPadding, GameUI.maxGameWidth);
@@ -33,29 +37,69 @@ export default function HomeScreen() {
     engineRef.current.jump();
   }, []);
 
-  const handleDuck = useCallback((isDucking: boolean) => {
-    engineRef.current.duck(isDucking);
+  const handleDuckStart = useCallback(() => {
+    setIsDucking(true);
+    engineRef.current.duck(true);
   }, []);
 
+  const handleDuckEnd = useCallback(() => {
+    setIsDucking(false);
+    engineRef.current.duck(false);
+  }, []);
+
+  // Touch handlers for mobile (tap = jump, hold = duck)
+  const handleTouchStart = useCallback(() => {
+    pressStartTimeRef.current = Date.now();
+
+    // Set timer for hold detection
+    pressTimerRef.current = setTimeout(() => {
+      // Held long enough - start ducking
+      handleDuckStart();
+    }, HOLD_DURATION);
+  }, [handleDuckStart]);
+
+  const handleTouchEnd = useCallback(() => {
+    const pressDuration = Date.now() - pressStartTimeRef.current;
+
+    // Clear timer
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+
+    if (isDucking) {
+      // Was ducking, stop ducking
+      handleDuckEnd();
+    } else if (pressDuration < HOLD_DURATION) {
+      // Quick tap - jump
+      handleJump();
+    }
+  }, [isDucking, handleDuckEnd, handleJump]);
+
   useEffect(() => {
+    // Only add keyboard listeners on web platform
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'Space' || event.code === 'ArrowUp') {
         event.preventDefault();
         handleJump();
       } else if (event.code === 'ArrowDown') {
         event.preventDefault();
-        handleDuck(true);
+        handleDuckStart();
       }
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
       if (event.code === 'ArrowDown') {
         event.preventDefault();
-        handleDuck(false);
+        handleDuckEnd();
       }
     };
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.addEventListener) {
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
       return () => {
@@ -63,7 +107,7 @@ export default function HomeScreen() {
         window.removeEventListener('keyup', onKeyUp);
       };
     }
-  }, [handleJump, handleDuck]);
+  }, [handleJump, handleDuckStart, handleDuckEnd]);
 
   useEffect(() => {
     let lastTime = Date.now();
@@ -93,10 +137,11 @@ export default function HomeScreen() {
   return (
     <View style={styles.page}>
       <Text style={styles.title}>Dino-Crash</Text>
-      <Text style={styles.subtitle}>Tap to Jump • Swipe Down to Duck</Text>
+      <Text style={styles.subtitle}>Tap = Jump • Hold = Duck • Desktop: Arrow keys</Text>
 
       <Pressable
-        onPress={handleJump}
+        onPressIn={handleTouchStart}
+        onPressOut={handleTouchEnd}
         style={[
           styles.gameArea,
           {
@@ -157,7 +202,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: GameUI.pagePadding,
-    gap: GameUI.pageGap,
+    gap: 8,
   },
   title: {
     fontSize: 32,

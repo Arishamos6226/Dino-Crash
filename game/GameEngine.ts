@@ -21,8 +21,9 @@ export class GameEngine {
   private gameState: GameState;
   private nightModeFade: number;
   private timeSinceStart: number;
+  private lastInvertDistance: number;
 
-  constructor() {
+  constructor(seed?: number) {
     this.dino = new Dino();
     this.obstacles = [];
     this.clouds = [];
@@ -30,7 +31,7 @@ export class GameEngine {
     this.collisionSystem = new CollisionSystem();
     this.physicsSystem = new PhysicsSystem();
     this.scoreSystem = new ScoreSystem();
-    this.spawnSystem = new SpawnSystem();
+    this.spawnSystem = new SpawnSystem(seed);
 
     this.currentSpeed = PHYSICS.INITIAL_SPEED;
     this.gameState = 'WAITING';
