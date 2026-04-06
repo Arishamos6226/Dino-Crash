@@ -135,13 +135,15 @@ export default function HomeScreen() {
   const dinoBottom = GAME.GROUND_HEIGHT + dino.y;
 
   return (
-    <View style={styles.page}>
+    <Pressable
+      onPressIn={handleTouchStart}
+      onPressOut={handleTouchEnd}
+      style={styles.page}
+    >
       <Text style={styles.title}>Dino-Crash</Text>
       <Text style={styles.subtitle}>Tap = Jump • Hold = Duck • Desktop: Arrow keys</Text>
 
-      <Pressable
-        onPressIn={handleTouchStart}
-        onPressOut={handleTouchEnd}
+      <View
         style={[
           styles.gameArea,
           {
@@ -190,8 +192,8 @@ export default function HomeScreen() {
             <Text style={[styles.restart, { fontSize: 12 * Math.min(scale, 1.5) }]}>Tap to Restart</Text>
           </View>
         )}
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 

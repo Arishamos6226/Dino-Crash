@@ -224,16 +224,18 @@ export default function MultiplayerScreen() {
   const scale = gameWidth / GAME.WIDTH;
 
   return (
-    <View style={styles.page}>
+    <Pressable
+      onPressIn={handleTouchStart}
+      onPressOut={handleTouchEnd}
+      disabled={gameOver}
+      style={styles.page}
+    >
       <Text style={styles.title}>Multiplayer Mode</Text>
 
       <View style={styles.gameContainer}>
         {/* Player 1 Section */}
         <View style={styles.playerSection}>
-          <Pressable
-            onPressIn={playerId === 'player1' ? handleTouchStart : undefined}
-            onPressOut={playerId === 'player1' ? handleTouchEnd : undefined}
-            disabled={gameOver || playerId !== 'player1'}
+          <View
             style={[
               styles.laneWrapper,
               {
@@ -250,7 +252,7 @@ export default function MultiplayerScreen() {
               label="PLAYER 1"
               isLocal={playerId === 'player1'}
             />
-          </Pressable>
+          </View>
         </View>
 
         {/* Divider */}
@@ -258,10 +260,7 @@ export default function MultiplayerScreen() {
 
         {/* Player 2 Section */}
         <View style={styles.playerSection}>
-          <Pressable
-            onPressIn={playerId === 'player2' ? handleTouchStart : undefined}
-            onPressOut={playerId === 'player2' ? handleTouchEnd : undefined}
-            disabled={gameOver || playerId !== 'player2'}
+          <View
             style={[
               styles.laneWrapper,
               {
@@ -278,7 +277,7 @@ export default function MultiplayerScreen() {
               label={isBot ? 'BOT' : 'PLAYER 2'}
               isLocal={playerId === 'player2'}
             />
-          </Pressable>
+          </View>
         </View>
       </View>
 
@@ -299,7 +298,7 @@ export default function MultiplayerScreen() {
           </Pressable>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
