@@ -4,7 +4,6 @@
 
 export enum GameMode {
   SOLO = 'SOLO',
-  VS_BOT = 'VS_BOT',
   VS_ONLINE = 'VS_ONLINE'
 }
 
@@ -23,7 +22,6 @@ export interface GameStartPayload {
   seed: number;
   playerId: 'player1' | 'player2';
   opponentId: string;
-  isBot: boolean;
 }
 
 export interface PlayerInputPayload {

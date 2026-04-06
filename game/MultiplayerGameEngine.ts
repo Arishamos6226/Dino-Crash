@@ -1,7 +1,6 @@
 import { GameEngine } from './GameEngine';
 import { PlayerInput } from '../shared/network-types';
 import type { RenderState } from './types';
-import { BotPlayer } from './ai/BotPlayer';
 
 export interface MultiplayerRenderState {
   player1: RenderState;
@@ -12,33 +11,19 @@ export class MultiplayerGameEngine {
   private player1Engine: GameEngine;
   private player2Engine: GameEngine;
   private localPlayerId: 'player1' | 'player2';
-  private isBot: boolean;
-  private botPlayer?: BotPlayer;
 
-  constructor(seed: number, localPlayerId: 'player1' | 'player2', isBot: boolean) {
+  constructor(seed: number, localPlayerId: 'player1' | 'player2') {
+    console.log('MultiplayerGameEngine constructor:', { seed, localPlayerId });
+
     // Both engines use the same seed for deterministic obstacle generation
     this.player1Engine = new GameEngine(seed);
     this.player2Engine = new GameEngine(seed);
     this.localPlayerId = localPlayerId;
-    this.isBot = isBot;
-
-    if (isBot) {
-      // Bot controls player2
-      this.botPlayer = new BotPlayer(this.player2Engine);
-    }
   }
 
   update(deltaTime: number) {
     this.player1Engine.update(deltaTime);
     this.player2Engine.update(deltaTime);
-
-    // Bot AI decision making
-    if (this.botPlayer) {
-      const botInput = this.botPlayer.decideAction();
-      if (botInput) {
-        this.applyInput('player2', botInput);
-      }
-    }
   }
 
   applyInput(playerId: 'player1' | 'player2', input: PlayerInput) {

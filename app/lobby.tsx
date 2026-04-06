@@ -37,10 +37,9 @@ export default function LobbyScreen() {
               params: {
                 seed: payload.seed.toString(),
                 playerId: payload.playerId,
-                isBot: payload.isBot.toString(),
               }
             });
-          }, 2000);
+          }, 1000);
         });
       } catch (error) {
         console.error('Failed to connect:', error);
@@ -61,16 +60,16 @@ export default function LobbyScreen() {
 
       {status === 'connecting' && (
         <>
-          <ActivityIndicator size="large" color={Colors.game.textColor} />
+          <ActivityIndicator size="large" color={Colors.game.accentSecondary} />
           <Text style={styles.statusText}>Connecting to server...</Text>
         </>
       )}
 
       {status === 'searching' && (
         <>
-          <ActivityIndicator size="large" color={Colors.game.textColor} />
+          <ActivityIndicator size="large" color={Colors.game.accentPrimary} />
           <Text style={styles.statusText}>Finding opponent...</Text>
-          <Text style={styles.subtleText}>You'll be matched with a bot after 5 seconds</Text>
+          <Text style={styles.subtleText}>Waiting for another player to join</Text>
         </>
       )}
 
@@ -111,7 +110,7 @@ const styles = StyleSheet.create({
   foundText: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#4CAF50',
+    color: Colors.game.accentSecondary,
     marginBottom: 16,
   },
 });

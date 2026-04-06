@@ -21,14 +21,6 @@ export default function MenuScreen() {
 
         <Pressable
           style={styles.button}
-          onPress={() => router.push('/multiplayer?mode=bot')}
-        >
-          <Text style={styles.buttonText}>Play vs Bot</Text>
-          <Text style={styles.buttonDescription}>Challenge an AI opponent</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.button}
           onPress={() => router.push('/lobby')}
         >
           <Text style={styles.buttonText}>Play Online</Text>
@@ -64,12 +56,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   button: {
-    backgroundColor: Colors.game.borderColor,
+    backgroundColor: Colors.game.buttonBackground,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.game.textColor,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonText: {
     fontSize: 24,

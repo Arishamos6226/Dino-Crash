@@ -1,16 +1,12 @@
 import { Server, Socket } from 'socket.io';
 import { PlayerInput, GameStartPayload, PlayerInputPayload, GameOverPayload, OpponentInputPayload, PlayerCrashPayload } from '../../shared/network-types';
-import { BotAI } from './BotAI';
 
 type GameState = 'WAITING' | 'RUNNING' | 'FINISHED';
 
 export class GameRoom {
   private roomId: string;
   private player1: Socket;
-  private player2: Socket | null;
-  private isBot: boolean;
-  private bot: BotAI | null = null;
-  private botInterval: NodeJS.Timeout | null = null;
+  private player2: Socket;
   private seed: number;
   private gameState: GameState = 'WAITING';
   private player1Alive: boolean = true;
@@ -19,23 +15,16 @@ export class GameRoom {
   private player2Score: number = 0;
   private io: Server;
 
-  constructor(io: Server, player1: Socket, player2: Socket | null = null) {
+  constructor(io: Server, player1: Socket, player2: Socket) {
     this.io = io;
     this.roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.player1 = player1;
     this.player2 = player2;
-    this.isBot = player2 === null;
     this.seed = Math.floor(Math.random() * 1000000);
-
-    if (this.isBot) {
-      this.bot = new BotAI();
-    }
 
     // Join room
     player1.join(this.roomId);
-    if (player2) {
-      player2.join(this.roomId);
-    }
+    player2.join(this.roomId);
 
     this.setupEventHandlers();
   }
@@ -54,20 +43,18 @@ export class GameRoom {
       this.handleDisconnect('player1');
     });
 
-    // Player 2 handlers (if not bot)
-    if (this.player2) {
-      this.player2.on('player_input', (payload: PlayerInputPayload) => {
-        this.handleInput('player2', payload.input);
-      });
+    // Player 2 handlers
+    this.player2.on('player_input', (payload: PlayerInputPayload) => {
+      this.handleInput('player2', payload.input);
+    });
 
-      this.player2.on('player_crash', (payload: PlayerCrashPayload) => {
-        this.handleCrash('player2', payload.timestamp);
-      });
+    this.player2.on('player_crash', (payload: PlayerCrashPayload) => {
+      this.handleCrash('player2', payload.timestamp);
+    });
 
-      this.player2.on('disconnect', () => {
-        this.handleDisconnect('player2');
-      });
-    }
+    this.player2.on('disconnect', () => {
+      this.handleDisconnect('player2');
+    });
   }
 
   start() {
@@ -78,50 +65,18 @@ export class GameRoom {
       roomId: this.roomId,
       seed: this.seed,
       playerId: 'player1',
-      opponentId: this.isBot ? 'BOT' : 'player2',
-      isBot: this.isBot
+      opponentId: 'player2'
     };
     this.player1.emit('game_start', payload1);
 
-    // Send game start to player 2 (if not bot)
-    if (this.player2) {
-      const payload2: GameStartPayload = {
-        roomId: this.roomId,
-        seed: this.seed,
-        playerId: 'player2',
-        opponentId: 'player1',
-        isBot: false
-      };
-      this.player2.emit('game_start', payload2);
-    }
-
-    // Start bot AI if bot mode
-    if (this.isBot && this.bot) {
-      this.startBotAI();
-    }
-  }
-
-  private startBotAI() {
-    if (!this.bot) return;
-
-    // Bot makes decisions every 200-400ms
-    const interval = 200 + Math.random() * 200;
-    this.botInterval = setInterval(() => {
-      if (this.gameState !== 'RUNNING' || !this.player2Alive) {
-        if (this.botInterval) {
-          clearInterval(this.botInterval);
-        }
-        return;
-      }
-
-      const action = this.bot!.generateAction();
-      if (action) {
-        // Simulate bot input with delay
-        setTimeout(() => {
-          this.handleInput('player2', action);
-        }, this.bot!.getReactionDelay());
-      }
-    }, interval);
+    // Send game start to player 2
+    const payload2: GameStartPayload = {
+      roomId: this.roomId,
+      seed: this.seed,
+      playerId: 'player2',
+      opponentId: 'player1'
+    };
+    this.player2.emit('game_start', payload2);
   }
 
   private handleInput(playerId: 'player1' | 'player2', input: PlayerInput) {
@@ -133,7 +88,7 @@ export class GameRoom {
       timestamp: Date.now()
     };
 
-    if (playerId === 'player1' && this.player2) {
+    if (playerId === 'player1') {
       this.player2.emit('opponent_input', opponentPayload);
     } else if (playerId === 'player2') {
       this.player1.emit('opponent_input', opponentPayload);
@@ -171,11 +126,6 @@ export class GameRoom {
   private endGame(reason: 'CRASH' | 'DISCONNECT') {
     this.gameState = 'FINISHED';
 
-    // Stop bot AI
-    if (this.botInterval) {
-      clearInterval(this.botInterval);
-    }
-
     // Determine winner
     let winnerId: 'player1' | 'player2';
 
@@ -210,21 +160,13 @@ export class GameRoom {
     this.player1.removeAllListeners('player_crash');
     this.player1.removeAllListeners('disconnect');
 
-    if (this.player2) {
-      this.player2.removeAllListeners('player_input');
-      this.player2.removeAllListeners('player_crash');
-      this.player2.removeAllListeners('disconnect');
-    }
+    this.player2.removeAllListeners('player_input');
+    this.player2.removeAllListeners('player_crash');
+    this.player2.removeAllListeners('disconnect');
 
     // Leave room
     this.player1.leave(this.roomId);
-    if (this.player2) {
-      this.player2.leave(this.roomId);
-    }
-
-    if (this.botInterval) {
-      clearInterval(this.botInterval);
-    }
+    this.player2.leave(this.roomId);
   }
 
   getRoomId(): string {

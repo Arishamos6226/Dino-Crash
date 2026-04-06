@@ -13,24 +13,35 @@ export default function MultiplayerScreen() {
   const params = useLocalSearchParams<{
     seed: string;
     playerId: string;
-    isBot: string;
-    mode?: string;
   }>();
 
   const router = useRouter();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  const seed = Number(params.seed) || Date.now();
+  // Generate seed only once
+  const [seed] = useState(() => Number(params.seed) || Date.now());
   const playerId = (params.playerId as 'player1' | 'player2') || 'player1';
-  const isBot = params.isBot === 'true' || params.mode === 'bot';
 
-  const engineRef = useRef<MultiplayerGameEngine>(
-    new MultiplayerGameEngine(seed, playerId, isBot)
-  );
+  console.log('Multiplayer screen render:', { seed, playerId });
 
-  const [renderState, setRenderState] = useState<MultiplayerRenderState>(
-    engineRef.current.getRenderState()
-  );
+  // Create engine only once
+  const engineRef = useRef<MultiplayerGameEngine | null>(null);
+
+  if (!engineRef.current) {
+    console.log('Creating new MultiplayerGameEngine!');
+    engineRef.current = new MultiplayerGameEngine(seed, playerId);
+  }
+
+  const [renderState, setRenderState] = useState<MultiplayerRenderState>(() => {
+    if (engineRef.current) {
+      return engineRef.current.getRenderState();
+    }
+    // Dummy initial state
+    return {
+      player1: {} as any,
+      player2: {} as any,
+    };
+  });
 
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
@@ -39,35 +50,41 @@ export default function MultiplayerScreen() {
 
   // Setup network listeners for online mode
   useEffect(() => {
-    if (!isBot) {
-      // Listen for opponent inputs
-      networkManager.onOpponentInput((payload) => {
-        const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-        engineRef.current.applyInput(opponentId, payload.input);
-      });
+    // Listen for opponent inputs
+    networkManager.onOpponentInput((payload) => {
+      if (!engineRef.current) return;
+      const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+      engineRef.current.applyInput(opponentId, payload.input);
+    });
 
-      // Listen for game over
-      networkManager.onGameOver((payload) => {
-        console.log('Game over:', payload);
-        setWinner(payload.winnerId);
-        setGameOver(true);
-      });
-    }
+    // Listen for game over
+    networkManager.onGameOver((payload) => {
+      console.log('Game over:', payload);
+      setWinner(payload.winnerId);
+      setGameOver(true);
+    });
 
     return () => {
       // Cleanup
     };
-  }, [isBot, playerId]);
+  }, [playerId]);
 
   // Game loop
   useEffect(() => {
+    if (!engineRef.current) return;
+
     let lastTime = Date.now();
     let animationFrameId: number;
+    let hasStarted = false;
 
-    // Start the game
+    // Start the game once
+    console.log('Starting game engines...');
     engineRef.current.start();
+    hasStarted = true;
 
     const gameLoop = () => {
+      if (!engineRef.current) return;
+
       const currentTime = Date.now();
       const deltaTime = currentTime - lastTime;
       lastTime = currentTime;
@@ -83,8 +100,8 @@ export default function MultiplayerScreen() {
           setWinner(localWinner);
           setGameOver(true);
 
-          // Send crash notification if playing online
-          if (!isBot && engineRef.current.getLocalPlayerId() === playerId) {
+          // Send crash notification
+          if (engineRef.current.getLocalPlayerId() === playerId) {
             const localState = playerId === 'player1' ? newRenderState.player1 : newRenderState.player2;
             if (localState.gameState === 'CRASHED') {
               networkManager.sendCrash();
@@ -99,7 +116,7 @@ export default function MultiplayerScreen() {
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameOver, isBot, playerId]);
+  }, [gameOver, playerId]);
 
   const [isDucking, setIsDucking] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -108,31 +125,26 @@ export default function MultiplayerScreen() {
 
   // Handle jump
   const handleJump = useCallback(() => {
-    if (gameOver) return;
+    if (gameOver || !engineRef.current) return;
     engineRef.current.applyInput(playerId, PlayerInput.JUMP);
-    if (!isBot) {
-      networkManager.sendInput(PlayerInput.JUMP);
-    }
-  }, [isBot, playerId, gameOver]);
+    networkManager.sendInput(PlayerInput.JUMP);
+  }, [playerId, gameOver]);
 
   // Handle duck start
   const handleDuckStart = useCallback(() => {
-    if (gameOver) return;
+    if (gameOver || !engineRef.current) return;
     setIsDucking(true);
     engineRef.current.applyInput(playerId, PlayerInput.DUCK_START);
-    if (!isBot) {
-      networkManager.sendInput(PlayerInput.DUCK_START);
-    }
-  }, [isBot, playerId, gameOver]);
+    networkManager.sendInput(PlayerInput.DUCK_START);
+  }, [playerId, gameOver]);
 
   // Handle duck end
   const handleDuckEnd = useCallback(() => {
+    if (!engineRef.current) return;
     setIsDucking(false);
     engineRef.current.applyInput(playerId, PlayerInput.DUCK_END);
-    if (!isBot) {
-      networkManager.sendInput(PlayerInput.DUCK_END);
-    }
-  }, [isBot, playerId]);
+    networkManager.sendInput(PlayerInput.DUCK_END);
+  }, [playerId]);
 
   // Touch handlers for mobile (tap = jump, hold = duck)
   const handleTouchStart = useCallback(() => {
@@ -241,8 +253,8 @@ export default function MultiplayerScreen() {
               {
                 width: gameWidth,
                 height: gameHeight,
-                borderWidth: 2,
-                borderColor: playerId === 'player1' ? '#4CAF50' : Colors.game.borderColor,
+                borderWidth: 3,
+                borderColor: playerId === 'player1' ? Colors.game.accentPrimary : Colors.game.borderColor,
               }
             ]}
           >
@@ -266,15 +278,15 @@ export default function MultiplayerScreen() {
               {
                 width: gameWidth,
                 height: gameHeight,
-                borderWidth: 2,
-                borderColor: playerId === 'player2' ? '#4CAF50' : Colors.game.borderColor,
+                borderWidth: 3,
+                borderColor: playerId === 'player2' ? Colors.game.accentPrimary : Colors.game.borderColor,
               }
             ]}
           >
             <PlayerLane
               renderState={renderState.player2}
               scale={scale}
-              label={isBot ? 'BOT' : 'PLAYER 2'}
+              label="PLAYER 2"
               isLocal={playerId === 'player2'}
             />
           </View>
@@ -288,10 +300,10 @@ export default function MultiplayerScreen() {
           <Text style={styles.winner}>
             {winner === playerId ? 'YOU WIN!' :
              winner === 'player1' ? 'PLAYER 1 WINS!' :
-             isBot ? 'BOT WINS!' : 'PLAYER 2 WINS!'}
+             'PLAYER 2 WINS!'}
           </Text>
           <Text style={styles.scores}>
-            Player 1: {renderState.player1.score} | {isBot ? 'Bot' : 'Player 2'}: {renderState.player2.score}
+            Player 1: {renderState.player1.score} | Player 2: {renderState.player2.score}
           </Text>
           <Pressable style={styles.restartButton} onPress={handleRestart}>
             <Text style={styles.restartText}>Back to Menu</Text>
@@ -355,7 +367,7 @@ const styles = StyleSheet.create({
   winner: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#4CAF50',
+    color: Colors.game.accentSecondary,
     letterSpacing: 1,
   },
   scores: {
@@ -367,10 +379,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    backgroundColor: Colors.game.borderColor,
+    backgroundColor: Colors.game.buttonBackground,
     borderRadius: 8,
-    borderWidth: 2,
-    borderColor: Colors.game.textColor,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   restartText: {
     fontSize: 18,
