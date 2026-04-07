@@ -18,40 +18,30 @@ export class MatchmakingQueue {
   }
 
   addPlayer(socket: Socket, gameMode: GameMode) {
-    console.log(`Player ${socket.id} joined queue for ${gameMode}`);
+    if (gameMode !== GameMode.VS_ONLINE) return;
 
-    // For online mode, try to pair with waiting player
-    if (gameMode === GameMode.VS_ONLINE) {
-      const pairedRoom = this.tryPairPlayers(socket);
+    const pairedRoom = this.tryPairPlayers(socket);
 
-      if (pairedRoom) {
-        console.log(`Paired ${socket.id} with another player`);
-        pairedRoom.start();
-        return;
-      }
-
-      // No pair found, add to queue
-      const queuedPlayer: QueuedPlayer = {
-        socket,
-        gameMode,
-        queuedAt: Date.now()
-      };
-
-      this.waitingPlayers.set(socket.id, queuedPlayer);
-
-      // Notify player they're in queue
-      socket.emit('matchmaking_status', { status: 'searching' });
+    if (pairedRoom) {
+      pairedRoom.start();
+      return;
     }
+
+    const queuedPlayer: QueuedPlayer = {
+      socket,
+      gameMode,
+      queuedAt: Date.now()
+    };
+
+    this.waitingPlayers.set(socket.id, queuedPlayer);
+    socket.emit('matchmaking_status', { status: 'searching' });
   }
 
   private tryPairPlayers(newPlayer: Socket): GameRoom | null {
-    // Find first waiting player
     for (const [socketId, queuedPlayer] of this.waitingPlayers.entries()) {
       if (queuedPlayer.gameMode === GameMode.VS_ONLINE) {
-        // Remove from queue
         this.waitingPlayers.delete(socketId);
 
-        // Create game room
         const room = new GameRoom(this.io, queuedPlayer.socket, newPlayer);
         this.activeRooms.set(room.getRoomId(), room);
 
@@ -63,12 +53,7 @@ export class MatchmakingQueue {
   }
 
   removePlayer(socket: Socket) {
-    const queuedPlayer = this.waitingPlayers.get(socket.id);
-
-    if (queuedPlayer) {
-      this.waitingPlayers.delete(socket.id);
-      console.log(`Player ${socket.id} removed from queue`);
-    }
+    this.waitingPlayers.delete(socket.id);
   }
 
   getActiveRoomCount(): number {

@@ -12,17 +12,16 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: Colors.game.accentPrimary,
+        tabBarInactiveTintColor: Colors.game.subtitleText,
+        tabBarStyle: {
+          backgroundColor: Colors.game.pageBackground,
+          borderTopColor: Colors.game.borderColor,
+          borderTopWidth: 1,
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
-      <Tabs.Screen
-        name="menu"
-        options={{
-          title: 'Menu',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
-        }}
-      />
       <Tabs.Screen
         name="index"
         options={{
@@ -31,10 +30,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="lobby"
+        options={{
+          title: 'Multiplayer',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          href: null, // Versteckt den Tab
+        }}
+      />
+      <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          href: null, // Versteckt den Tab
         }}
       />
     </Tabs>

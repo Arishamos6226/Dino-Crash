@@ -81,11 +81,7 @@ export class GameEngine {
       this.crash();
     }
 
-    const milestoneReached = this.scoreSystem.update(this.currentSpeed, deltaTime);
-    if (milestoneReached) {
-      // TODO: Play milestone sound
-    }
-
+    this.scoreSystem.update(this.currentSpeed, deltaTime);
     this.updateNightMode();
   }
 

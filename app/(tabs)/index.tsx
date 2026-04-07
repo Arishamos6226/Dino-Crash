@@ -8,6 +8,8 @@ import { ObstacleSprite } from '../../game/components/ObstacleSprite';
 import { CloudSprite } from '../../game/components/CloudSprite';
 import { Colors, GameUI } from '../../constants/theme';
 
+const HOLD_DURATION_MS = 200;
+
 export default function HomeScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const engineRef = useRef<GameEngine>(new GameEngine());
@@ -17,7 +19,6 @@ export default function HomeScreen() {
   const [isDucking, setIsDucking] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pressStartTimeRef = useRef<number>(0);
-  const HOLD_DURATION = 200; // ms to distinguish tap from hold
 
   const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
   const maxGameWidth = Math.min(windowWidth - GameUI.screenPadding, GameUI.maxGameWidth);
@@ -47,40 +48,31 @@ export default function HomeScreen() {
     engineRef.current.duck(false);
   }, []);
 
-  // Touch handlers for mobile (tap = jump, hold = duck)
   const handleTouchStart = useCallback(() => {
     pressStartTimeRef.current = Date.now();
 
-    // Set timer for hold detection
     pressTimerRef.current = setTimeout(() => {
-      // Held long enough - start ducking
       handleDuckStart();
-    }, HOLD_DURATION);
+    }, HOLD_DURATION_MS);
   }, [handleDuckStart]);
 
   const handleTouchEnd = useCallback(() => {
     const pressDuration = Date.now() - pressStartTimeRef.current;
 
-    // Clear timer
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
 
     if (isDucking) {
-      // Was ducking, stop ducking
       handleDuckEnd();
-    } else if (pressDuration < HOLD_DURATION) {
-      // Quick tap - jump
+    } else if (pressDuration < HOLD_DURATION_MS) {
       handleJump();
     }
   }, [isDucking, handleDuckEnd, handleJump]);
 
   useEffect(() => {
-    // Only add keyboard listeners on web platform
-    if (Platform.OS !== 'web') {
-      return;
-    }
+    if (Platform.OS !== 'web') return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'Space' || event.code === 'ArrowUp') {

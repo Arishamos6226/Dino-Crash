@@ -1,7 +1,3 @@
-/**
- * Shared types for client-server communication
- */
-
 export enum GameMode {
   SOLO = 'SOLO',
   VS_ONLINE = 'VS_ONLINE'

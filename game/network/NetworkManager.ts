@@ -39,18 +39,15 @@ class NetworkManager {
       });
 
       this.socket.on('connect', () => {
-        console.log('Connected to server:', this.socket?.id);
         this.connected = true;
         resolve();
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
         reject(error);
       });
 
       this.socket.on('disconnect', () => {
-        console.log('Disconnected from server');
         this.connected = false;
       });
     });
@@ -66,16 +63,12 @@ class NetworkManager {
 
     this.socket.once('game_start', (payload: GameStartPayload) => {
       this.roomId = payload.roomId;
-      console.log('Game starting:', payload);
       onGameStart(payload);
     });
   }
 
   sendInput(input: PlayerInput) {
-    if (!this.socket || !this.roomId) {
-      console.warn('Cannot send input: not connected or no room');
-      return;
-    }
+    if (!this.socket || !this.roomId) return;
 
     this.socket.emit('player_input', {
       roomId: this.roomId,
@@ -85,19 +78,15 @@ class NetworkManager {
   }
 
   sendCrash(score: number) {
-    if (!this.socket || !this.roomId) {
-      console.warn('Cannot send crash: not connected or no room');
-      return;
-    }
+    if (!this.socket || !this.roomId) return;
 
     const payload: PlayerCrashPayload = {
       roomId: this.roomId,
-      playerId: 'player1', // Will be determined by server
+      playerId: 'player1',
       timestamp: Date.now(),
-      score: score
+      score
     };
 
-    console.log('Sending crash with score:', score);
     this.socket.emit('player_crash', payload);
   }
 

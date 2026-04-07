@@ -98,8 +98,6 @@ export class GameRoom {
   private handleCrash(playerId: 'player1' | 'player2', timestamp: number, score: number) {
     if (this.gameState !== 'RUNNING') return;
 
-    console.log(`Player ${playerId} crashed at timestamp ${timestamp} with score ${score}`);
-
     if (playerId === 'player1') {
       this.player1Alive = false;
       this.player1Score = score;
@@ -108,19 +106,14 @@ export class GameRoom {
       this.player2Score = score;
     }
 
-    // Game only ends when BOTH players have crashed
     if (!this.player1Alive && !this.player2Alive) {
-      console.log('Both players crashed, ending game');
       this.endGame('CRASH');
-    } else {
-      console.log(`${playerId} crashed, but game continues. Waiting for other player...`);
     }
   }
 
   private handleDisconnect(playerId: 'player1' | 'player2') {
     if (this.gameState === 'FINISHED') return;
 
-    // Disconnect means automatic loss
     if (playerId === 'player1') {
       this.player1Alive = false;
     } else {
@@ -133,18 +126,7 @@ export class GameRoom {
   private endGame(reason: 'CRASH' | 'DISCONNECT') {
     this.gameState = 'FINISHED';
 
-    // Determine winner
-    let winnerId: 'player1' | 'player2';
-
-    if (!this.player1Alive && !this.player2Alive) {
-      // Both crashed - higher score wins (or draw)
-      winnerId = this.player1Score >= this.player2Score ? 'player1' : 'player2';
-    } else if (!this.player1Alive) {
-      winnerId = 'player2';
-    } else {
-      winnerId = 'player1';
-    }
-
+    const winnerId = this.determineWinner();
     const gameOverPayload: GameOverPayload = {
       winnerId,
       player1Score: this.player1Score,
@@ -152,13 +134,16 @@ export class GameRoom {
       reason
     };
 
-    // Broadcast to all players in room
     this.io.to(this.roomId).emit('game_over', gameOverPayload);
 
-    // Clean up after 5 seconds
-    setTimeout(() => {
-      this.cleanup();
-    }, 5000);
+    setTimeout(() => this.cleanup(), 5000);
+  }
+
+  private determineWinner(): 'player1' | 'player2' {
+    if (!this.player1Alive && !this.player2Alive) {
+      return this.player1Score >= this.player2Score ? 'player1' : 'player2';
+    }
+    return !this.player1Alive ? 'player2' : 'player1';
   }
 
   cleanup() {

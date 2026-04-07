@@ -13,9 +13,6 @@ export class MultiplayerGameEngine {
   private localPlayerId: 'player1' | 'player2';
 
   constructor(seed: number, localPlayerId: 'player1' | 'player2') {
-    console.log('MultiplayerGameEngine constructor:', { seed, localPlayerId });
-
-    // Both engines use the same seed for deterministic obstacle generation
     this.player1Engine = new GameEngine(seed);
     this.player2Engine = new GameEngine(seed);
     this.localPlayerId = localPlayerId;
@@ -48,18 +45,14 @@ export class MultiplayerGameEngine {
   }
 
   getWinner(): 'player1' | 'player2' | null {
-    const p1State = this.player1Engine.getState().gameState;
-    const p2State = this.player2Engine.getState().gameState;
+    const p1State = this.player1Engine.getState();
+    const p2State = this.player2Engine.getState();
 
-    // Game only ends when BOTH players have crashed
-    if (p1State !== 'CRASHED' || p2State !== 'CRASHED') {
+    if (p1State.gameState !== 'CRASHED' || p2State.gameState !== 'CRASHED') {
       return null;
     }
 
-    // Both crashed - compare scores
-    const p1Score = this.player1Engine.getState().score;
-    const p2Score = this.player2Engine.getState().score;
-    return p1Score > p2Score ? 'player1' : 'player2';
+    return p1State.score > p2State.score ? 'player1' : 'player2';
   }
 
   getRenderState(): MultiplayerRenderState {

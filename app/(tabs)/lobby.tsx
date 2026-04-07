@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import NetworkManager from '../game/network/NetworkManager';
-import { GameMode } from '../shared/network-types';
-import { Colors, GameUI } from '../constants/theme';
+import NetworkManager from '../../game/network/NetworkManager';
+import { GameMode } from '../../shared/network-types';
+import { Colors, GameUI } from '../../constants/theme';
 
-// Automatische URL-Auswahl:
-// - Web: localhost funktioniert
-// - Mobile: Nutzt deine lokale IP
 const SERVER_URL = Platform.OS === 'web'
   ? 'http://localhost:3001'
   : 'http://192.168.1.107:3001';
+
+const GAME_START_DELAY_MS = 1000;
 
 export default function LobbyScreen() {
   const [status, setStatus] = useState<'connecting' | 'searching' | 'found'>('connecting');
@@ -21,21 +20,16 @@ export default function LobbyScreen() {
 
     const connectAndSearch = async () => {
       try {
-        // Connect to server
         await networkManager.connect(SERVER_URL);
         setStatus('searching');
 
-        // Listen for matchmaking status
-        networkManager.onMatchmakingStatus((statusPayload) => {
-          console.log('Matchmaking status:', statusPayload);
+        networkManager.onMatchmakingStatus(() => {
+          setStatus('searching');
         });
 
-        // Find match
         networkManager.findMatch(GameMode.VS_ONLINE, (payload) => {
           setStatus('found');
-          console.log('Match found:', payload);
 
-          // Navigate to multiplayer game
           setTimeout(() => {
             router.replace({
               pathname: '/multiplayer',
@@ -44,19 +38,14 @@ export default function LobbyScreen() {
                 playerId: payload.playerId,
               }
             });
-          }, 1000);
+          }, GAME_START_DELAY_MS);
         });
       } catch (error) {
-        console.error('Failed to connect:', error);
         setStatus('searching');
       }
     };
 
     connectAndSearch();
-
-    return () => {
-      // Clean up on unmount
-    };
   }, [router]);
 
   return (

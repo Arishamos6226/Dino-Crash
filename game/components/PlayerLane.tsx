@@ -19,7 +19,6 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
 
   return (
     <View style={styles.laneContainer}>
-      {/* Sky */}
       <View
         style={[
           styles.sky,
@@ -29,7 +28,6 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
         ]}
       />
 
-      {/* Ground */}
       <View
         style={[
           styles.ground,
@@ -40,15 +38,12 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
         ]}
       />
 
-      {/* Clouds */}
       {clouds.map((cloud) => (
         <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
       ))}
 
-      {/* Dino */}
       <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
 
-      {/* Obstacles */}
       {obstacles.map((obstacle) => {
         const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
         return (
@@ -61,21 +56,18 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
         );
       })}
 
-      {/* Player Label */}
       <View style={[styles.labelContainer, { top: GameUI.scoreOffset * scale }]}>
         <Text style={[styles.label, { fontSize: 10 * scale }]}>
           {label} {isLocal && '(YOU)'}
         </Text>
       </View>
 
-      {/* Score */}
       <View style={[styles.scoreContainer, { top: GameUI.scoreOffset * scale, right: GameUI.scoreOffset * scale }]}>
         <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>
           {String(score).padStart(5, '0')}
         </Text>
       </View>
 
-      {/* Crashed Overlay - Greyed out with score */}
       {gameState === 'CRASHED' && (
         <View style={styles.crashedOverlay}>
           <Text style={[styles.lostText, { fontSize: 20 * scale }]}>
