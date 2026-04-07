@@ -199,15 +199,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.game.titleText,
     textAlign: 'center',
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.game.subtitleText,
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
   },
   gameArea: {

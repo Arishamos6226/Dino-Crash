@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { PlayerInput, GameStartPayload, PlayerInputPayload, GameOverPayload, OpponentInputPayload, PlayerCrashPayload } from '../../shared/network-types';
+import { PlayerInput, GameStartPayload, PlayerInputPayload, GameOverPayload, OpponentInputPayload, PlayerCrashPayload, PlaceBetPayload } from '../../shared/network-types';
 
 type GameState = 'WAITING' | 'RUNNING' | 'FINISHED';
 
@@ -13,6 +13,10 @@ export class GameRoom {
   private player2Alive: boolean = true;
   private player1Score: number = 0;
   private player2Score: number = 0;
+  private player1Bet: number = 0;
+  private player2Bet: number = 0;
+  private player1BetPlaced: boolean = false;
+  private player2BetPlaced: boolean = false;
   private io: Server;
 
   constructor(io: Server, player1: Socket, player2: Socket) {
@@ -30,7 +34,10 @@ export class GameRoom {
   }
 
   private setupEventHandlers() {
-    // Player 1 handlers
+    this.player1.on('place_bet', (payload: PlaceBetPayload) => {
+      this.handlePlaceBet('player1', payload.betAmount);
+    });
+
     this.player1.on('player_input', (payload: PlayerInputPayload) => {
       this.handleInput('player1', payload.input);
     });
@@ -43,7 +50,10 @@ export class GameRoom {
       this.handleDisconnect('player1');
     });
 
-    // Player 2 handlers
+    this.player2.on('place_bet', (payload: PlaceBetPayload) => {
+      this.handlePlaceBet('player2', payload.betAmount);
+    });
+
     this.player2.on('player_input', (payload: PlayerInputPayload) => {
       this.handleInput('player2', payload.input);
     });
@@ -57,24 +67,41 @@ export class GameRoom {
     });
   }
 
+  private handlePlaceBet(playerId: 'player1' | 'player2', betAmount: number) {
+    if (playerId === 'player1') {
+      this.player1Bet = betAmount;
+      this.player1BetPlaced = true;
+    } else {
+      this.player2Bet = betAmount;
+      this.player2BetPlaced = true;
+    }
+
+    if (this.player1BetPlaced && this.player2BetPlaced) {
+      this.io.to(this.roomId).emit('both_players_ready');
+      this.start();
+    }
+  }
+
   start() {
     this.gameState = 'RUNNING';
 
-    // Send game start to player 1
     const payload1: GameStartPayload = {
       roomId: this.roomId,
       seed: this.seed,
       playerId: 'player1',
-      opponentId: 'player2'
+      opponentId: 'player2',
+      player1Bet: this.player1Bet,
+      player2Bet: this.player2Bet
     };
     this.player1.emit('game_start', payload1);
 
-    // Send game start to player 2
     const payload2: GameStartPayload = {
       roomId: this.roomId,
       seed: this.seed,
       playerId: 'player2',
-      opponentId: 'player1'
+      opponentId: 'player1',
+      player1Bet: this.player1Bet,
+      player2Bet: this.player2Bet
     };
     this.player2.emit('game_start', payload2);
   }

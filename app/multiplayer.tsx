@@ -10,21 +10,22 @@ import NetworkManager from '../game/network/NetworkManager';
 import { Colors, GameUI } from '../constants/theme';
 
 const HOLD_DURATION_MS = 200;
-const RESERVED_UI_HEIGHT = 200;
-const LANE_SPACING = 40;
+const RESERVED_UI_HEIGHT = 120;
+const LANE_SPACING = 20;
 
 export default function MultiplayerScreen() {
   const params = useLocalSearchParams<{
     seed: string;
     playerId: string;
+    betAmount: string;
   }>();
 
   const router = useRouter();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  // Generate seed only once
   const [seed] = useState(() => Number(params.seed) || Date.now());
   const playerId = (params.playerId as 'player1' | 'player2') || 'player1';
+  const betAmount = Number(params.betAmount) || 0;
 
   const engineRef = useRef<MultiplayerGameEngine | null>(null);
 
@@ -93,12 +94,6 @@ export default function MultiplayerScreen() {
           crashSentRef.current = true;
           networkManager.sendCrash(localState.score);
         }
-
-        const localWinner = engineRef.current.getWinner();
-        if (localWinner) {
-          setWinner(localWinner);
-          setGameOver(true);
-        }
       }
 
       animationFrameId = requestAnimationFrame(gameLoop);
@@ -114,17 +109,23 @@ export default function MultiplayerScreen() {
   const pressStartTimeRef = useRef<number>(0);
 
   const handleJump = useCallback(() => {
-    if (gameOver || !engineRef.current) return;
+    if (!engineRef.current) return;
+    const localState = playerId === 'player1' ? engineRef.current.getRenderState().player1 : engineRef.current.getRenderState().player2;
+    if (localState.gameState === 'CRASHED') return;
+
     engineRef.current.applyInput(playerId, PlayerInput.JUMP);
     networkManager.sendInput(PlayerInput.JUMP);
-  }, [playerId, gameOver]);
+  }, [playerId]);
 
   const handleDuckStart = useCallback(() => {
-    if (gameOver || !engineRef.current) return;
+    if (!engineRef.current) return;
+    const localState = playerId === 'player1' ? engineRef.current.getRenderState().player1 : engineRef.current.getRenderState().player2;
+    if (localState.gameState === 'CRASHED') return;
+
     setIsDucking(true);
     engineRef.current.applyInput(playerId, PlayerInput.DUCK_START);
     networkManager.sendInput(PlayerInput.DUCK_START);
-  }, [playerId, gameOver]);
+  }, [playerId]);
 
   const handleDuckEnd = useCallback(() => {
     if (!engineRef.current) return;
@@ -134,13 +135,12 @@ export default function MultiplayerScreen() {
   }, [playerId]);
 
   const handleTouchStart = useCallback(() => {
-    if (gameOver) return;
     pressStartTimeRef.current = Date.now();
 
     pressTimerRef.current = setTimeout(() => {
       handleDuckStart();
     }, HOLD_DURATION_MS);
-  }, [gameOver, handleDuckStart]);
+  }, [handleDuckStart]);
 
   const handleTouchEnd = useCallback(() => {
     const pressDuration = Date.now() - pressStartTimeRef.current;
@@ -158,7 +158,7 @@ export default function MultiplayerScreen() {
   }, [isDucking, handleDuckEnd, handleJump]);
 
   const handleRestart = useCallback(() => {
-    router.back();
+    router.replace('/(tabs)/lobby');
   }, [router]);
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function MultiplayerScreen() {
   }, [handleJump, handleDuckStart, handleDuckEnd]);
 
   const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
-  const maxGameWidth = Math.min(windowWidth - 32, 600);
+  const maxGameWidth = Math.min(windowWidth - 16, 1000);
   const availableHeight = windowHeight - RESERVED_UI_HEIGHT;
   const laneHeight = availableHeight / 2 - LANE_SPACING;
 
@@ -201,14 +201,34 @@ export default function MultiplayerScreen() {
   const gameHeight = calculatedWidth < maxGameWidth ? laneHeight : maxGameWidth / aspectRatio;
   const scale = gameWidth / GAME.WIDTH;
 
+  const localState = playerId === 'player1' ? renderState.player1 : renderState.player2;
+  const opponentState = playerId === 'player1' ? renderState.player2 : renderState.player1;
+  const isLocalCrashed = localState.gameState === 'CRASHED';
+  const isOpponentCrashed = opponentState.gameState === 'CRASHED';
+  const isSweating = isLocalCrashed && !isOpponentCrashed && !gameOver;
+
+  const scoreDifference = opponentState.score - localState.score;
+  const potentialWinnings = isSweating ? betAmount * 2 + Math.floor(scoreDifference / 100) * betAmount * 0.1 : betAmount * 2;
+
   return (
     <Pressable
       onPressIn={handleTouchStart}
       onPressOut={handleTouchEnd}
-      disabled={gameOver}
+      disabled={isLocalCrashed}
       style={styles.page}
     >
-      <Text style={styles.title}>Multiplayer Mode</Text>
+      <View style={styles.header}>
+        <View style={styles.betDisplay}>
+          <Text style={styles.betLabel}>💰 POT</Text>
+          <Text style={styles.betAmount}>{betAmount * 2} Käulen</Text>
+        </View>
+        {isSweating && (
+          <View style={styles.sweatingBanner}>
+            <Text style={styles.sweatingText}>😰 SCHWITZEN! 😰</Text>
+            <Text style={styles.winningsText}>Gegner Gewinn: {Math.floor(potentialWinnings)}</Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.gameContainer}>
         {/* Player 1 Section */}
@@ -219,8 +239,8 @@ export default function MultiplayerScreen() {
               {
                 width: gameWidth,
                 height: gameHeight,
-                borderWidth: 3,
-                borderColor: playerId === 'player1' ? Colors.game.accentPrimary : Colors.game.borderColor,
+                borderWidth: 4,
+                borderColor: playerId === 'player1' ? Colors.game.casinoGold : Colors.game.borderColor,
               }
             ]}
           >
@@ -244,8 +264,8 @@ export default function MultiplayerScreen() {
               {
                 width: gameWidth,
                 height: gameHeight,
-                borderWidth: 3,
-                borderColor: playerId === 'player2' ? Colors.game.accentPrimary : Colors.game.borderColor,
+                borderWidth: 4,
+                borderColor: playerId === 'player2' ? Colors.game.casinoGold : Colors.game.borderColor,
               }
             ]}
           >
@@ -264,8 +284,20 @@ export default function MultiplayerScreen() {
         <View style={styles.overlay}>
           <Text style={styles.gameOver}>GAME OVER</Text>
           <Text style={[styles.winner, winner !== playerId && styles.loser]}>
-            {winner === playerId ? 'YOU WIN!' : 'YOU LOST!'}
+            {winner === playerId ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
           </Text>
+          {winner === playerId && (
+            <View style={styles.winningsContainer}>
+              <Text style={styles.winningsLabel}>Gewinn:</Text>
+              <Text style={styles.winningsAmount}>+{Math.floor(potentialWinnings)} Käulen</Text>
+            </View>
+          )}
+          {winner !== playerId && (
+            <View style={styles.lossContainer}>
+              <Text style={styles.lossLabel}>Verlust:</Text>
+              <Text style={styles.lossAmount}>-{betAmount} Käulen</Text>
+            </View>
+          )}
           <Text style={styles.scores}>
             Your Score: {playerId === 'player1' ? finalScores.player1 : finalScores.player2}
           </Text>
@@ -288,14 +320,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     padding: GameUI.pagePadding,
-    paddingTop: 20,
+    paddingTop: 8,
   },
-  title: {
-    fontSize: 24,
+  header: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 4,
+  },
+  betDisplay: {
+    backgroundColor: Colors.game.casinoBlack,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.game.accentGold,
+    alignItems: 'center',
+  },
+  betLabel: {
+    fontSize: 10,
+    color: Colors.game.accentGold,
+    fontWeight: '600',
+  },
+  betAmount: {
+    fontSize: 16,
     fontWeight: '700',
-    color: Colors.game.titleText,
-    textAlign: 'center',
-    marginBottom: 16,
+    color: Colors.game.accentGold,
+  },
+  sweatingBanner: {
+    backgroundColor: Colors.game.casinoRed,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 2,
+    borderColor: Colors.game.casinoBlack,
+  },
+  sweatingText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.game.casinoBlack,
+  },
+  winningsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.game.casinoGold,
+    marginTop: 2,
   },
   gameContainer: {
     width: '100%',
@@ -328,39 +399,81 @@ const styles = StyleSheet.create({
   gameOver: {
     fontSize: 32,
     fontWeight: '700',
-    color: Colors.game.textColor,
+    color: Colors.game.casinoGold,
     letterSpacing: 2,
   },
   winner: {
     fontSize: 28,
     fontWeight: '700',
-    color: Colors.game.accentSecondary,
+    color: Colors.game.casinoGold,
     letterSpacing: 1,
   },
   loser: {
-    color: Colors.game.accentPrimary,
+    color: Colors.game.casinoRed,
+  },
+  winningsContainer: {
+    backgroundColor: Colors.game.casinoBlack,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginVertical: 8,
+    borderWidth: 3,
+    borderColor: Colors.game.casinoGold,
+  },
+  winningsLabel: {
+    fontSize: 14,
+    color: Colors.game.casinoGold,
+    fontWeight: '600',
+  },
+  winningsAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Colors.game.accentGold,
+  },
+  lossContainer: {
+    backgroundColor: Colors.game.casinoBlack,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginVertical: 8,
+    borderWidth: 3,
+    borderColor: Colors.game.casinoRed,
+  },
+  lossLabel: {
+    fontSize: 14,
+    color: Colors.game.casinoRed,
+    fontWeight: '600',
+  },
+  lossAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Colors.game.casinoRed,
   },
   scores: {
     fontSize: 18,
-    color: Colors.game.textColor,
+    color: Colors.game.casinoGold,
     fontFamily: 'monospace',
+    fontWeight: '600',
   },
   restartButton: {
     marginTop: 16,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    backgroundColor: Colors.game.buttonBackground,
+    backgroundColor: Colors.game.casinoBlack,
     borderRadius: 8,
-    borderWidth: 0,
-    shadowColor: '#000',
+    borderWidth: 3,
+    borderColor: Colors.game.casinoGold,
+    shadowColor: Colors.game.casinoGold,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 5,
   },
   restartText: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.game.textColor,
+    color: Colors.game.casinoGold,
   },
 });

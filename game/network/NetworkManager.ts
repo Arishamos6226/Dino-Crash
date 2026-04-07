@@ -6,7 +6,8 @@ import {
   GameOverPayload,
   OpponentInputPayload,
   FindMatchPayload,
-  PlayerCrashPayload
+  PlayerCrashPayload,
+  PlaceBetPayload
 } from '../../shared/network-types';
 
 class NetworkManager {
@@ -103,6 +104,23 @@ class NetworkManager {
   onMatchmakingStatus(callback: (status: { status: string }) => void) {
     if (!this.socket) return;
     this.socket.on('matchmaking_status', callback);
+  }
+
+  placeBet(roomId: string, betAmount: number) {
+    if (!this.socket) return;
+
+    const payload: PlaceBetPayload = {
+      roomId,
+      playerId: 'player1',
+      betAmount
+    };
+
+    this.socket.emit('place_bet', payload);
+  }
+
+  onBothPlayersReady(callback: () => void) {
+    if (!this.socket) return;
+    this.socket.once('both_players_ready', callback);
   }
 
   disconnect() {

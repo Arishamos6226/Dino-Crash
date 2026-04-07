@@ -32,8 +32,9 @@ export default function LobbyScreen() {
 
           setTimeout(() => {
             router.replace({
-              pathname: '/multiplayer',
+              pathname: '/betting',
               params: {
+                roomId: payload.roomId,
                 seed: payload.seed.toString(),
                 playerId: payload.playerId,
               }
@@ -54,14 +55,14 @@ export default function LobbyScreen() {
 
       {status === 'connecting' && (
         <>
-          <ActivityIndicator size="large" color={Colors.game.accentSecondary} />
+          <ActivityIndicator size="large" color={Colors.game.casinoGold} />
           <Text style={styles.statusText}>Connecting to server...</Text>
         </>
       )}
 
       {status === 'searching' && (
         <>
-          <ActivityIndicator size="large" color={Colors.game.accentPrimary} />
+          <ActivityIndicator size="large" color={Colors.game.casinoGold} />
           <Text style={styles.statusText}>Finding opponent...</Text>
           <Text style={styles.subtleText}>Waiting for another player to join</Text>
         </>
@@ -94,7 +95,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 20,
-    color: Colors.game.textColor,
+    color: Colors.game.casinoGold,
+    fontWeight: '600',
   },
   subtleText: {
     fontSize: 14,
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
   foundText: {
     fontSize: 32,
     fontWeight: '700',
-    color: Colors.game.accentSecondary,
+    color: Colors.game.casinoGold,
     marginBottom: 16,
   },
 });

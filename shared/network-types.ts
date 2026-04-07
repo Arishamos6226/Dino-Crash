@@ -18,6 +18,14 @@ export interface GameStartPayload {
   seed: number;
   playerId: 'player1' | 'player2';
   opponentId: string;
+  player1Bet?: number;
+  player2Bet?: number;
+}
+
+export interface PlaceBetPayload {
+  roomId: string;
+  playerId: 'player1' | 'player2';
+  betAmount: number;
 }
 
 export interface PlayerInputPayload {

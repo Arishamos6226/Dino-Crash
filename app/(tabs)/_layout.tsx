@@ -12,12 +12,12 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.game.accentPrimary,
-        tabBarInactiveTintColor: Colors.game.subtitleText,
+        tabBarActiveTintColor: Colors.game.accentGold,
+        tabBarInactiveTintColor: Colors.game.textColor,
         tabBarStyle: {
           backgroundColor: Colors.game.pageBackground,
           borderTopColor: Colors.game.borderColor,
-          borderTopWidth: 1,
+          borderTopWidth: 2,
         },
         headerShown: false,
         tabBarButton: HapticTab,
