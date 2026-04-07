@@ -127,23 +127,36 @@ export default function HomeScreen() {
   const dinoBottom = GAME.GROUND_HEIGHT + dino.y;
 
   return (
-    <Pressable
-      onPressIn={handleTouchStart}
-      onPressOut={handleTouchEnd}
-      style={styles.page}
-    >
-      <Text style={styles.title}>Dino-Crash</Text>
-      <Text style={styles.subtitle}>Tap = Jump • Hold = Duck • Desktop: Arrow keys</Text>
+    <View style={styles.page}>
+      <View style={styles.header}>
+        <Text style={styles.title}>🦖 DINO CRASH</Text>
+        <View style={styles.scoreBoard}>
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>SCORE</Text>
+            <Text style={styles.scoreValue}>{String(score).padStart(5, '0')}</Text>
+          </View>
+          <View style={styles.scoreDivider} />
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>BEST</Text>
+            <Text style={styles.scoreValue}>{String(highScore).padStart(5, '0')}</Text>
+          </View>
+        </View>
+      </View>
 
-      <View
-        style={[
-          styles.gameArea,
-          {
-            width: gameWidth,
-            height: gameHeight,
-          }
-        ]}
+      <Pressable
+        onPressIn={handleTouchStart}
+        onPressOut={handleTouchEnd}
+        style={styles.gameCard}
       >
+        <View
+          style={[
+            styles.gameArea,
+            {
+              width: gameWidth,
+              height: gameHeight,
+            }
+          ]}
+        >
         <View
           style={[
             styles.sky,
@@ -173,19 +186,19 @@ export default function HomeScreen() {
           return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} scale={scale} />;
         })}
 
-        <View style={[styles.scoreBox, { top: GameUI.scoreOffset * scale, right: GameUI.scoreOffset * scale, gap: GameUI.scoreGap * scale }]}>
-          <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>HI {String(highScore).padStart(5, '0')}</Text>
-          <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>{String(score).padStart(5, '0')}</Text>
-        </View>
-
         {gameState === 'CRASHED' && (
           <View style={styles.overlay}>
-            <Text style={[styles.gameOver, { fontSize: 24 * Math.min(scale, 1.5) }]}>G A M E  O V E R</Text>
-            <Text style={[styles.restart, { fontSize: 12 * Math.min(scale, 1.5) }]}>Tap to Restart</Text>
+            <Text style={[styles.gameOver, { fontSize: 28 * Math.min(scale, 1.5) }]}>GAME OVER</Text>
+            <Text style={[styles.restart, { fontSize: 16 * Math.min(scale, 1.5) }]}>Tap to Restart</Text>
           </View>
         )}
       </View>
-    </Pressable>
+      </Pressable>
+
+      <View style={styles.controls}>
+        <Text style={styles.controlText}>TAP = JUMP • HOLD = DUCK</Text>
+      </View>
+    </View>
   );
 }
 
@@ -193,31 +206,80 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
+  },
+  header: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: GameUI.pagePadding,
-    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '900',
     color: Colors.game.titleText,
     textAlign: 'center',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(255, 215, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+    marginBottom: 16,
+  },
+  scoreBoard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.game.gameBackground,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 3,
+    borderColor: Colors.game.borderColor,
+    alignItems: 'center',
+    gap: 24,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  scoreItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  scoreLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.game.subtitleText,
+    letterSpacing: 1,
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 12,
-    color: Colors.game.subtitleText,
-    marginBottom: 4,
-    textAlign: 'center',
+  scoreValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    fontFamily: 'monospace',
+  },
+  scoreDivider: {
+    width: 2,
+    height: 30,
+    backgroundColor: Colors.game.borderColor,
+  },
+  gameCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   gameArea: {
-    borderWidth: GameUI.borderWidth,
+    borderWidth: 4,
     borderColor: Colors.game.borderColor,
     backgroundColor: Colors.game.gameBackground,
     overflow: 'hidden',
     position: 'relative',
-    borderRadius: 8,
+    borderRadius: 20,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
   },
   sky: {
     ...StyleSheet.absoluteFillObject,

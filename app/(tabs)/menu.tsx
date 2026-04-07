@@ -7,15 +7,18 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dino-Crash</Text>
-      <Text style={styles.subtitle}>Choose Your Mode</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>🦖 DINO CRASH</Text>
+        <Text style={styles.subtitle}>Ultimate Dinosaur Racing</Text>
+      </View>
 
       <View style={styles.buttonContainer}>
         <Pressable
           style={styles.button}
           onPress={() => router.push('/')}
         >
-          <Text style={styles.buttonText}>Play Solo</Text>
+          <Text style={styles.buttonIcon}>🎮</Text>
+          <Text style={styles.buttonText}>PLAY SOLO</Text>
           <Text style={styles.buttonDescription}>Classic single-player mode</Text>
         </Pressable>
 
@@ -23,9 +26,14 @@ export default function MenuScreen() {
           style={styles.button}
           onPress={() => router.push('/lobby')}
         >
-          <Text style={styles.buttonText}>Play Online</Text>
-          <Text style={styles.buttonDescription}>Compete against real players</Text>
+          <Text style={styles.buttonIcon}>🎰</Text>
+          <Text style={styles.buttonText}>PLAY ONLINE</Text>
+          <Text style={styles.buttonDescription}>Bet & compete against real players</Text>
         </Pressable>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Test your reflexes • Beat the high score</Text>
       </View>
     </View>
   );
@@ -36,46 +44,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     padding: GameUI.pagePadding,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.game.titleText,
-    marginBottom: 8,
+    letterSpacing: 3,
+    textShadowColor: 'rgba(255, 215, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 12,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.game.subtitleText,
-    marginBottom: 48,
+    letterSpacing: 1,
   },
   buttonContainer: {
     width: '100%',
     maxWidth: 400,
-    gap: 16,
+    gap: 20,
   },
   button: {
-    backgroundColor: Colors.game.casinoBlack,
-    padding: 20,
-    borderRadius: 12,
+    backgroundColor: Colors.game.gameBackground,
+    padding: 28,
+    borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.game.casinoGold,
-    shadowColor: Colors.game.casinoGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 4,
+    borderColor: Colors.game.accentGold,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+    gap: 8,
   },
-  buttonText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.game.casinoGold,
+  buttonIcon: {
+    fontSize: 40,
     marginBottom: 4,
   },
+  buttonText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 2,
+  },
   buttonDescription: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '500',
     color: Colors.game.subtitleText,
+    textAlign: 'center',
+  },
+  footer: {
+    alignItems: 'center',
+    opacity: 0.6,
+  },
+  footerText: {
+    fontSize: 12,
+    color: Colors.game.accentGold,
+    fontWeight: '500',
   },
 });

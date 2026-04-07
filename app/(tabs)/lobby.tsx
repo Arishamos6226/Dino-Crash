@@ -51,29 +51,40 @@ export default function LobbyScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dino-Crash</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>🦖 DINO CRASH</Text>
+        <Text style={styles.subtitle}>Online Matchmaking</Text>
+      </View>
 
-      {status === 'connecting' && (
-        <>
-          <ActivityIndicator size="large" color={Colors.game.casinoGold} />
-          <Text style={styles.statusText}>Connecting to server...</Text>
-        </>
-      )}
+      <View style={styles.statusCard}>
+        {status === 'connecting' && (
+          <>
+            <ActivityIndicator size="large" color={Colors.game.casinoGold} />
+            <Text style={styles.statusText}>Connecting to server...</Text>
+            <Text style={styles.subtleText}>Establishing connection</Text>
+          </>
+        )}
 
-      {status === 'searching' && (
-        <>
-          <ActivityIndicator size="large" color={Colors.game.casinoGold} />
-          <Text style={styles.statusText}>Finding opponent...</Text>
-          <Text style={styles.subtleText}>Waiting for another player to join</Text>
-        </>
-      )}
+        {status === 'searching' && (
+          <>
+            <ActivityIndicator size="large" color={Colors.game.casinoGold} />
+            <Text style={styles.statusText}>Finding opponent...</Text>
+            <Text style={styles.subtleText}>Waiting for another player to join</Text>
+          </>
+        )}
 
-      {status === 'found' && (
-        <>
-          <Text style={styles.foundText}>✓ Opponent Found!</Text>
-          <Text style={styles.statusText}>Starting game...</Text>
-        </>
-      )}
+        {status === 'found' && (
+          <>
+            <Text style={styles.foundIcon}>✓</Text>
+            <Text style={styles.foundText}>Opponent Found!</Text>
+            <Text style={styles.statusText}>Preparing game...</Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Get ready to race • Place your bet</Text>
+      </View>
     </View>
   );
 }
@@ -83,30 +94,73 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: GameUI.pagePadding,
-    gap: 16,
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.game.titleText,
-    marginBottom: 32,
+    letterSpacing: 3,
+    textShadowColor: 'rgba(255, 215, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 12,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.game.subtitleText,
+    letterSpacing: 1,
+  },
+  statusCard: {
+    backgroundColor: Colors.game.gameBackground,
+    borderRadius: 20,
+    padding: 40,
+    minWidth: 320,
+    alignItems: 'center',
+    gap: 20,
+    borderWidth: 4,
+    borderColor: Colors.game.accentGold,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  foundIcon: {
+    fontSize: 64,
+    color: Colors.game.accentGold,
   },
   statusText: {
     fontSize: 20,
-    color: Colors.game.casinoGold,
-    fontWeight: '600',
+    color: Colors.game.accentGold,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   subtleText: {
     fontSize: 14,
     color: Colors.game.subtitleText,
-    marginTop: 8,
+    fontWeight: '500',
   },
   foundText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: Colors.game.casinoGold,
-    marginBottom: 16,
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 2,
+  },
+  footer: {
+    alignItems: 'center',
+    opacity: 0.6,
+  },
+  footerText: {
+    fontSize: 12,
+    color: Colors.game.accentGold,
+    fontWeight: '500',
   },
 });
