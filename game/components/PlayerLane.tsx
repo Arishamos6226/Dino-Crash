@@ -75,11 +75,14 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
         </Text>
       </View>
 
-      {/* Crashed Overlay */}
+      {/* Crashed Overlay - Greyed out with score */}
       {gameState === 'CRASHED' && (
         <View style={styles.crashedOverlay}>
-          <Text style={[styles.crashedText, { fontSize: 16 * scale }]}>
-            CRASHED
+          <Text style={[styles.lostText, { fontSize: 20 * scale }]}>
+            LOST
+          </Text>
+          <Text style={[styles.finalScoreText, { fontSize: 14 * scale }]}>
+            Score: {String(score).padStart(5, '0')}
           </Text>
         </View>
       )}
@@ -125,13 +128,25 @@ const styles = StyleSheet.create({
   },
   crashedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(100, 100, 100, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  crashedText: {
+  lostText: {
     fontWeight: '700',
-    color: '#FF0000',
-    letterSpacing: 1,
+    color: '#FF4444',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  finalScoreText: {
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

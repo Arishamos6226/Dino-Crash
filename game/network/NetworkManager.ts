@@ -84,7 +84,7 @@ class NetworkManager {
     });
   }
 
-  sendCrash() {
+  sendCrash(score: number) {
     if (!this.socket || !this.roomId) {
       console.warn('Cannot send crash: not connected or no room');
       return;
@@ -93,9 +93,11 @@ class NetworkManager {
     const payload: PlayerCrashPayload = {
       roomId: this.roomId,
       playerId: 'player1', // Will be determined by server
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      score: score
     };
 
+    console.log('Sending crash with score:', score);
     this.socket.emit('player_crash', payload);
   }
 

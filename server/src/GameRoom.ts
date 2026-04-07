@@ -36,7 +36,7 @@ export class GameRoom {
     });
 
     this.player1.on('player_crash', (payload: PlayerCrashPayload) => {
-      this.handleCrash('player1', payload.timestamp);
+      this.handleCrash('player1', payload.timestamp, payload.score);
     });
 
     this.player1.on('disconnect', () => {
@@ -49,7 +49,7 @@ export class GameRoom {
     });
 
     this.player2.on('player_crash', (payload: PlayerCrashPayload) => {
-      this.handleCrash('player2', payload.timestamp);
+      this.handleCrash('player2', payload.timestamp, payload.score);
     });
 
     this.player2.on('disconnect', () => {
@@ -95,18 +95,25 @@ export class GameRoom {
     }
   }
 
-  private handleCrash(playerId: 'player1' | 'player2', timestamp: number) {
+  private handleCrash(playerId: 'player1' | 'player2', timestamp: number, score: number) {
     if (this.gameState !== 'RUNNING') return;
+
+    console.log(`Player ${playerId} crashed at timestamp ${timestamp} with score ${score}`);
 
     if (playerId === 'player1') {
       this.player1Alive = false;
+      this.player1Score = score;
     } else {
       this.player2Alive = false;
+      this.player2Score = score;
     }
 
-    // Check if game is over (at least one player crashed)
-    if (!this.player1Alive || !this.player2Alive) {
+    // Game only ends when BOTH players have crashed
+    if (!this.player1Alive && !this.player2Alive) {
+      console.log('Both players crashed, ending game');
       this.endGame('CRASH');
+    } else {
+      console.log(`${playerId} crashed, but game continues. Waiting for other player...`);
     }
   }
 

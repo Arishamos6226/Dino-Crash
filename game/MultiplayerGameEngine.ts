@@ -51,21 +51,15 @@ export class MultiplayerGameEngine {
     const p1State = this.player1Engine.getState().gameState;
     const p2State = this.player2Engine.getState().gameState;
 
-    // Game only ends when at least one player crashes
-    if (p1State !== 'CRASHED' && p2State !== 'CRASHED') {
+    // Game only ends when BOTH players have crashed
+    if (p1State !== 'CRASHED' || p2State !== 'CRASHED') {
       return null;
     }
 
-    // If both crashed, compare scores
-    if (p1State === 'CRASHED' && p2State === 'CRASHED') {
-      const p1Score = this.player1Engine.getState().score;
-      const p2Score = this.player2Engine.getState().score;
-      return p1Score > p2Score ? 'player1' : 'player2';
-    }
-
-    // One player crashed
-    if (p1State === 'CRASHED') return 'player2';
-    return 'player1';
+    // Both crashed - compare scores
+    const p1Score = this.player1Engine.getState().score;
+    const p2Score = this.player2Engine.getState().score;
+    return p1Score > p2Score ? 'player1' : 'player2';
   }
 
   getRenderState(): MultiplayerRenderState {

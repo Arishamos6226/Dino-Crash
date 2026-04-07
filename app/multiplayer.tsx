@@ -45,6 +45,8 @@ export default function MultiplayerScreen() {
 
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
+  const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
+  const crashSentRef = useRef(false);
 
   const networkManager = NetworkManager.getInstance();
 
@@ -59,8 +61,12 @@ export default function MultiplayerScreen() {
 
     // Listen for game over
     networkManager.onGameOver((payload) => {
-      console.log('Game over:', payload);
+      console.log('Game over from server:', payload);
       setWinner(payload.winnerId);
+      setFinalScores({
+        player1: payload.player1Score,
+        player2: payload.player2Score
+      });
       setGameOver(true);
     });
 
@@ -93,20 +99,24 @@ export default function MultiplayerScreen() {
       const newRenderState = engineRef.current.getRenderState();
       setRenderState(newRenderState);
 
-      // Check for winner (local check)
+      // Send crash notification when local player crashes (but game continues)
       if (!gameOver) {
+        const localState = playerId === 'player1' ? newRenderState.player1 : newRenderState.player2;
+
+        // Check if local player just crashed and hasn't sent notification yet
+        if (localState.gameState === 'CRASHED' && !crashSentRef.current) {
+          crashSentRef.current = true;
+          // Send crash notification to server with score
+          networkManager.sendCrash(localState.score);
+          console.log('Local player crashed, sent notification to server with score:', localState.score);
+        }
+
+        // Check if BOTH players crashed - only then show game over
         const localWinner = engineRef.current.getWinner();
         if (localWinner) {
           setWinner(localWinner);
           setGameOver(true);
-
-          // Send crash notification
-          if (engineRef.current.getLocalPlayerId() === playerId) {
-            const localState = playerId === 'player1' ? newRenderState.player1 : newRenderState.player2;
-            if (localState.gameState === 'CRASHED') {
-              networkManager.sendCrash();
-            }
-          }
+          console.log('Both players crashed, winner:', localWinner);
         }
       }
 
@@ -294,16 +304,17 @@ export default function MultiplayerScreen() {
       </View>
 
       {/* Game Over Overlay */}
-      {gameOver && winner && (
+      {gameOver && winner && finalScores && (
         <View style={styles.overlay}>
           <Text style={styles.gameOver}>GAME OVER</Text>
-          <Text style={styles.winner}>
-            {winner === playerId ? 'YOU WIN!' :
-             winner === 'player1' ? 'PLAYER 1 WINS!' :
-             'PLAYER 2 WINS!'}
+          <Text style={[styles.winner, winner !== playerId && styles.loser]}>
+            {winner === playerId ? 'YOU WIN!' : 'YOU LOST!'}
           </Text>
           <Text style={styles.scores}>
-            Player 1: {renderState.player1.score} | Player 2: {renderState.player2.score}
+            Your Score: {playerId === 'player1' ? finalScores.player1 : finalScores.player2}
+          </Text>
+          <Text style={styles.scores}>
+            Opponent: {playerId === 'player1' ? finalScores.player2 : finalScores.player1}
           </Text>
           <Pressable style={styles.restartButton} onPress={handleRestart}>
             <Text style={styles.restartText}>Back to Menu</Text>
@@ -369,6 +380,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.game.accentSecondary,
     letterSpacing: 1,
+  },
+  loser: {
+    color: Colors.game.accentPrimary,
   },
   scores: {
     fontSize: 18,

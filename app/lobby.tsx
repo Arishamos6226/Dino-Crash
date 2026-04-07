@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import NetworkManager from '../game/network/NetworkManager';
 import { GameMode } from '../shared/network-types';
 import { Colors, GameUI } from '../constants/theme';
 
-const SERVER_URL = 'http://localhost:3001';
+// Automatische URL-Auswahl:
+// - Web: localhost funktioniert
+// - Mobile: Nutzt deine lokale IP
+const SERVER_URL = Platform.OS === 'web'
+  ? 'http://localhost:3001'
+  : 'http://192.168.1.107:3001';
 
 export default function LobbyScreen() {
   const [status, setStatus] = useState<'connecting' | 'searching' | 'found'>('connecting');

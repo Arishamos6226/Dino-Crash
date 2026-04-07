@@ -35,6 +35,7 @@ export interface PlayerCrashPayload {
   roomId: string;
   playerId: 'player1' | 'player2';
   timestamp: number;
+  score: number;
 }
 
 export interface GameOverPayload {
