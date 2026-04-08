@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { PlayerInput, GameStartPayload, PlayerInputPayload, GameOverPayload, OpponentInputPayload, PlayerCrashPayload, PlaceBetPayload } from '../../shared/network-types';
+import { PlayerInput, GameStartPayload, PlayerInputPayload, GameOverPayload, OpponentInputPayload, PlayerCrashPayload, PlaceBetPayload, BetResponsePayload } from '../../shared/network-types';
 
 type GameState = 'WAITING' | 'RUNNING' | 'FINISHED';
 
@@ -34,8 +34,24 @@ export class GameRoom {
   }
 
   private setupEventHandlers() {
+    // Player1 = challenger (sets the bet)
     this.player1.on('place_bet', (payload: PlaceBetPayload) => {
-      this.handlePlaceBet('player1', payload.betAmount);
+      this.player1Bet = payload.betAmount;
+      this.player1BetPlaced = true;
+      // Send challenge to player2
+      this.player2.emit('bet_challenge', { betAmount: payload.betAmount });
+    });
+
+    // Player2 = challenged (accepts or declines)
+    this.player2.on('bet_response', (payload: BetResponsePayload) => {
+      if (!payload.accepted) {
+        this.io.to(this.roomId).emit('bet_declined');
+        return;
+      }
+      this.player2Bet = this.player1Bet;
+      this.player2BetPlaced = true;
+      this.io.to(this.roomId).emit('both_players_ready', { betAmount: this.player1Bet });
+      this.start();
     });
 
     this.player1.on('player_input', (payload: PlayerInputPayload) => {
@@ -50,10 +66,6 @@ export class GameRoom {
       this.handleDisconnect('player1');
     });
 
-    this.player2.on('place_bet', (payload: PlaceBetPayload) => {
-      this.handlePlaceBet('player2', payload.betAmount);
-    });
-
     this.player2.on('player_input', (payload: PlayerInputPayload) => {
       this.handleInput('player2', payload.input);
     });
@@ -65,21 +77,6 @@ export class GameRoom {
     this.player2.on('disconnect', () => {
       this.handleDisconnect('player2');
     });
-  }
-
-  private handlePlaceBet(playerId: 'player1' | 'player2', betAmount: number) {
-    if (playerId === 'player1') {
-      this.player1Bet = betAmount;
-      this.player1BetPlaced = true;
-    } else {
-      this.player2Bet = betAmount;
-      this.player2BetPlaced = true;
-    }
-
-    if (this.player1BetPlaced && this.player2BetPlaced) {
-      this.io.to(this.roomId).emit('both_players_ready');
-      this.start();
-    }
   }
 
   start() {
@@ -180,7 +177,7 @@ export class GameRoom {
     this.player1.removeAllListeners('player_crash');
     this.player1.removeAllListeners('disconnect');
 
-    this.player2.removeAllListeners('place_bet');
+    this.player2.removeAllListeners('bet_response');
     this.player2.removeAllListeners('player_input');
     this.player2.removeAllListeners('player_crash');
     this.player2.removeAllListeners('disconnect');
