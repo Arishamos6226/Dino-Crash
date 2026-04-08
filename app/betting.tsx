@@ -64,7 +64,7 @@ export default function BettingScreen() {
     <View style={styles.container}>
       <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.title}>🎰 PLACE YOUR BET 🎰</Text>
+          <Text style={styles.title}>PLACE YOUR BET</Text>
           <Text style={styles.subtitle}>Franken wetten</Text>
         </View>
 
@@ -101,7 +101,7 @@ export default function BettingScreen() {
           <View style={styles.actions}>
             <Pressable style={styles.confirmButton} onPress={handlePlaceBet}>
               <Text style={styles.confirmText}>
-                BET {selectedBet} KÄULEN
+                {selectedBet} Fr. SETZEN
               </Text>
             </Pressable>
             <Pressable style={styles.backButton} onPress={handleBackToMenu}>

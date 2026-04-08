@@ -244,17 +244,17 @@ export default function MultiplayerScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.potContainer}>
-              <Text style={styles.potLabel}>💰 POT</Text>
+              <Text style={styles.potLabel}>POT</Text>
               <Text style={styles.potAmount}>{betAmount * 2} Fr.</Text>
             </View>
             {milestoneNotification !== null && (
-              <Text style={styles.milestoneToast}>+{milestoneNotification} Fr. 🎯</Text>
+              <Text style={styles.milestoneToast}>+{milestoneNotification} Fr.</Text>
             )}
             {milestoneNotification === null && isSweating && (
-              <Text style={styles.statusBadgeSweating}>😰 Schwitzen!</Text>
+              <Text style={styles.statusBadgeSweating}>Schwitzen!</Text>
             )}
             {milestoneNotification === null && isLocalWinning && (
-              <Text style={styles.statusBadgeWinning}>🏆 Winning!</Text>
+              <Text style={styles.statusBadgeWinning}>Winning!</Text>
             )}
           </View>
           <Text style={styles.titleMain}>MULTIPLAYER</Text>
@@ -326,7 +326,7 @@ export default function MultiplayerScreen() {
             <View style={styles.overlay}>
               <Text style={styles.gameOver}>GAME OVER</Text>
               <Text style={[styles.winner, !isWinner && styles.loser]}>
-                {isWinner ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
+                {isWinner ? 'YOU WIN!' : 'YOU LOST!'}
               </Text>
               <View style={netResult >= 0 ? styles.winningsContainer : styles.lossContainer}>
                 <Text style={netResult >= 0 ? styles.winningsLabel : styles.lossLabel}>
