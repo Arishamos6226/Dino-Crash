@@ -66,3 +66,10 @@ export interface OpponentInputPayload {
   input: PlayerInput;
   timestamp: number;
 }
+
+export interface PlayerStatePayload {
+  roomId: string;
+  playerId: 'player1' | 'player2';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  state: any;
+}

@@ -9,6 +9,7 @@ import {
   PlayerCrashPayload,
   PlaceBetPayload
 } from '../../shared/network-types';
+import type { RenderState } from '../types';
 
 class NetworkManager {
   private static instance: NetworkManager;
@@ -146,6 +147,36 @@ class NetworkManager {
   onBothPlayersReady(callback: (payload: { betAmount: number }) => void) {
     if (!this.socket) return;
     this.socket.once('both_players_ready', callback);
+  }
+
+  sendGameReady() {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('player_game_ready', { roomId: this.roomId });
+  }
+
+  onGameStartNow(callback: () => void) {
+    if (!this.socket) return;
+    this.socket.once('game_start_now', callback);
+  }
+
+  offGameStartNow() {
+    if (!this.socket) return;
+    this.socket.off('game_start_now');
+  }
+
+  sendPlayerState(playerId: 'player1' | 'player2', state: RenderState) {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('player_state', { roomId: this.roomId, playerId, state });
+  }
+
+  onOpponentState(callback: (state: RenderState) => void) {
+    if (!this.socket) return;
+    this.socket.on('opponent_state', (payload: { state: RenderState }) => callback(payload.state));
+  }
+
+  offOpponentState() {
+    if (!this.socket) return;
+    this.socket.off('opponent_state');
   }
 
   disconnect() {

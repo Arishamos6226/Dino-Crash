@@ -8,19 +8,23 @@ export class SpawnSystem {
   private nextCloudId: number;
   private obstacleHistory: ObstacleType[];
   private rng: () => number;
+  private seed: string | undefined;
 
   constructor(seed?: number) {
+    this.seed = seed !== undefined ? seed.toString() : undefined;
     this.nextObstacleId = 1;
     this.nextCloudId = 1;
     this.obstacleHistory = [];
     // Use seeded RNG if seed provided, otherwise use Math.random
-    this.rng = seed !== undefined ? seedrandom(seed.toString()) : Math.random;
+    this.rng = this.seed !== undefined ? seedrandom(this.seed) : Math.random;
   }
 
   reset() {
     this.nextObstacleId = 1;
     this.nextCloudId = 1;
     this.obstacleHistory = [];
+    // Reset RNG to initial seed so obstacle sequence is reproducible
+    this.rng = this.seed !== undefined ? seedrandom(this.seed) : Math.random;
   }
 
   maybeSpawnObstacle(obstacles: Obstacle[], currentSpeed: number, timeSinceStart: number): Obstacle | null {

@@ -17,6 +17,8 @@ export class GameRoom {
   private player2Bet: number = 0;
   private player1BetPlaced: boolean = false;
   private player2BetPlaced: boolean = false;
+  private player1GameReady: boolean = false;
+  private player2GameReady: boolean = false;
   private io: Server;
 
   constructor(io: Server, player1: Socket, player2: Socket) {
@@ -52,6 +54,32 @@ export class GameRoom {
       this.player2BetPlaced = true;
       this.io.to(this.roomId).emit('both_players_ready', { betAmount: this.player1Bet });
       this.start();
+    });
+
+    this.player1.on('player_state', (payload: { state: unknown }) => {
+      this.player2.emit('opponent_state', { state: payload.state });
+    });
+
+    this.player2.on('player_state', (payload: { state: unknown }) => {
+      this.player1.emit('opponent_state', { state: payload.state });
+    });
+
+    // Both clients send 'player_game_ready' once they've mounted the game screen.
+    // Only when BOTH are ready do we emit 'game_start_now' — this guarantees both
+    // engines start at the same wall-clock moment regardless of clock skew or
+    // navigation time differences.
+    this.player1.on('player_game_ready', () => {
+      this.player1GameReady = true;
+      if (this.player2GameReady) {
+        this.io.to(this.roomId).emit('game_start_now');
+      }
+    });
+
+    this.player2.on('player_game_ready', () => {
+      this.player2GameReady = true;
+      if (this.player1GameReady) {
+        this.io.to(this.roomId).emit('game_start_now');
+      }
     });
 
     this.player1.on('player_input', (payload: PlayerInputPayload) => {
@@ -173,11 +201,15 @@ export class GameRoom {
   cleanup() {
     // Remove all listeners
     this.player1.removeAllListeners('place_bet');
+    this.player1.removeAllListeners('player_game_ready');
+    this.player1.removeAllListeners('player_state');
     this.player1.removeAllListeners('player_input');
     this.player1.removeAllListeners('player_crash');
     this.player1.removeAllListeners('disconnect');
 
     this.player2.removeAllListeners('bet_response');
+    this.player2.removeAllListeners('player_game_ready');
+    this.player2.removeAllListeners('player_state');
     this.player2.removeAllListeners('player_input');
     this.player2.removeAllListeners('player_crash');
     this.player2.removeAllListeners('disconnect');

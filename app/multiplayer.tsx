@@ -9,10 +9,12 @@ import { GAME } from '../game/constants';
 import { PlayerInput } from '../shared/network-types';
 import NetworkManager from '../game/network/NetworkManager';
 import { Colors, GameUI } from '../constants/theme';
+import type { RenderState } from '../game/types';
 
 const HOLD_DURATION_MS = 200;
 const RESERVED_UI_HEIGHT = 80;
 const LANE_SPACING = 12;
+const FIXED_STEP_MS = 1000 / 60; // ~16.67 ms — fixed physics tick for deterministic simulation
 
 export default function MultiplayerScreen() {
   const params = useLocalSearchParams<{
@@ -46,12 +48,18 @@ export default function MultiplayerScreen() {
   });
 
   const [gameOver, setGameOver] = useState(false);
+  const gameOverRef = useRef(false);
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
   const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
   const crashSentRef = useRef(false);
   const opponentCrashScoreRef = useRef<number | null>(null);
   const lastMilestoneRef = useRef(0);
   const [liveMilestones, setLiveMilestones] = useState(0);
+  const lastStateSendRef = useRef(0);
+  const [opponentNetworkState, setOpponentNetworkState] = useState<RenderState | null>(null);
+  const latestOpponentNetworkStateRef = useRef<RenderState | null>(null);
+  const accumulatorRef = useRef(0);
+  const [engineStarted, setEngineStarted] = useState(false);
 
   const networkManager = NetworkManager.getInstance();
 
@@ -63,6 +71,7 @@ export default function MultiplayerScreen() {
     };
 
     const handleGameOver = (payload: { winnerId: 'player1' | 'player2'; player1Score: number; player2Score: number }) => {
+      gameOverRef.current = true;
       setWinner(payload.winnerId);
       setFinalScores({
         player1: payload.player1Score,
@@ -73,33 +82,52 @@ export default function MultiplayerScreen() {
 
     networkManager.onOpponentInput(handleOpponentInput);
     networkManager.onGameOver(handleGameOver);
+    networkManager.onOpponentState((state) => {
+      latestOpponentNetworkStateRef.current = state;
+      setOpponentNetworkState(state);
+    });
+    // Tell server we're ready; it will emit 'game_start_now' once both players confirm.
+    networkManager.sendGameReady();
+    networkManager.onGameStartNow(() => {
+      if (engineRef.current) {
+        engineRef.current.start();
+      }
+      setEngineStarted(true);
+    });
 
     return () => {
       networkManager.offOpponentInput(handleOpponentInput);
       networkManager.offGameOver(handleGameOver);
+      networkManager.offOpponentState();
+      networkManager.offGameStartNow();
     };
   }, [playerId]);
 
   useEffect(() => {
-    if (!engineRef.current) return;
+    if (!engineStarted || !engineRef.current) return;
 
     let lastTime = Date.now();
     let animationFrameId: number;
-
-    engineRef.current.start();
 
     const gameLoop = () => {
       if (!engineRef.current) return;
 
       const currentTime = Date.now();
-      const deltaTime = currentTime - lastTime;
+      let elapsed = currentTime - lastTime;
       lastTime = currentTime;
 
-      engineRef.current.update(deltaTime);
+      // Cap to prevent spiral-of-death after tab focus loss etc.
+      if (elapsed > 200) elapsed = 200;
+      accumulatorRef.current += elapsed;
+
+      while (accumulatorRef.current >= FIXED_STEP_MS) {
+        engineRef.current.update(FIXED_STEP_MS);
+        accumulatorRef.current -= FIXED_STEP_MS;
+      }
       const newRenderState = engineRef.current.getRenderState();
       setRenderState(newRenderState);
 
-      if (!gameOver) {
+      if (!gameOverRef.current) {
         const localState = playerId === 'player1' ? newRenderState.player1 : newRenderState.player2;
 
         if (localState.gameState === 'CRASHED' && !crashSentRef.current) {
@@ -107,10 +135,19 @@ export default function MultiplayerScreen() {
           networkManager.sendCrash(localState.score);
         }
 
-        // Track opponent's crash score (once)
-        const opponentState = playerId === 'player1' ? newRenderState.player2 : newRenderState.player1;
-        if (opponentState.gameState === 'CRASHED' && opponentCrashScoreRef.current === null) {
-          opponentCrashScoreRef.current = opponentState.score;
+        // Send authoritative local state to opponent (~20fps)
+        if (currentTime - lastStateSendRef.current > 50) {
+          lastStateSendRef.current = currentTime;
+          networkManager.sendPlayerState(playerId, localState);
+        }
+
+        // Track opponent's crash score (once) — use authoritative network state,
+        // not the local simulation which can crash prematurely due to input lag.
+        const opponentNetState = latestOpponentNetworkStateRef.current;
+        const opponentSimState = playerId === 'player1' ? newRenderState.player2 : newRenderState.player1;
+        const opponentStateForLogic = opponentNetState ?? opponentSimState;
+        if (opponentStateForLogic.gameState === 'CRASHED' && opponentCrashScoreRef.current === null) {
+          opponentCrashScoreRef.current = opponentStateForLogic.score;
           lastMilestoneRef.current = 0;
         }
 
@@ -131,7 +168,7 @@ export default function MultiplayerScreen() {
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameOver, playerId]);
+  }, [engineStarted, playerId]);
 
   const [isDucking, setIsDucking] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -232,7 +269,9 @@ export default function MultiplayerScreen() {
   const scale = gameWidth / GAME.WIDTH;
 
   const localState = playerId === 'player1' ? renderState.player1 : renderState.player2;
-  const opponentState = playerId === 'player1' ? renderState.player2 : renderState.player1;
+  const localSimOpponentState = playerId === 'player1' ? renderState.player2 : renderState.player1;
+  // Use authoritative network state for opponent; fall back to local simulation until first packet
+  const opponentState: RenderState = opponentNetworkState ?? localSimOpponentState;
   const isLocalCrashed = localState.gameState === 'CRASHED';
   const isOpponentCrashed = opponentState.gameState === 'CRASHED';
   const isSweating = isLocalCrashed && !isOpponentCrashed && !gameOver;
@@ -270,52 +309,42 @@ export default function MultiplayerScreen() {
         </View>
 
         <View style={styles.gameContainer}>
-          {/* Player 1 Lane */}
+          {/* Local player lane always on top */}
           <View style={styles.playerSection}>
-            <Text style={[
-              styles.playerTag,
-              playerId === 'player1' ? styles.playerTagYou : styles.playerTagOpp,
-            ]}>
-              {playerId === 'player1' ? 'YOU' : 'OPPONENT'}
-            </Text>
+            <Text style={[styles.playerTag, styles.playerTagYou]}>YOU</Text>
             <View
               style={[
                 styles.laneWrapper,
-                playerId === 'player1' ? styles.laneWrapperLocal : styles.laneWrapperOpp,
+                styles.laneWrapperLocal,
                 { width: gameWidth, height: gameHeight },
               ]}
             >
               <PlayerLane
-                renderState={renderState.player1}
+                renderState={localState}
                 scale={scale}
-                label="PLAYER 1"
-                isLocal={playerId === 'player1'}
+                label={playerId === 'player1' ? 'PLAYER 1' : 'PLAYER 2'}
+                isLocal={true}
               />
             </View>
           </View>
 
           <View style={styles.divider} />
 
-          {/* Player 2 Lane */}
+          {/* Opponent lane always on bottom */}
           <View style={styles.playerSection}>
-            <Text style={[
-              styles.playerTag,
-              playerId === 'player2' ? styles.playerTagYou : styles.playerTagOpp,
-            ]}>
-              {playerId === 'player2' ? 'YOU' : 'OPPONENT'}
-            </Text>
+            <Text style={[styles.playerTag, styles.playerTagOpp]}>OPPONENT</Text>
             <View
               style={[
                 styles.laneWrapper,
-                playerId === 'player2' ? styles.laneWrapperLocal : styles.laneWrapperOpp,
+                styles.laneWrapperOpp,
                 { width: gameWidth, height: gameHeight },
               ]}
             >
               <PlayerLane
-                renderState={renderState.player2}
+                renderState={opponentState}
                 scale={scale}
-                label="PLAYER 2"
-                isLocal={playerId === 'player2'}
+                label={playerId === 'player1' ? 'PLAYER 2' : 'PLAYER 1'}
+                isLocal={false}
               />
             </View>
           </View>

@@ -19,12 +19,22 @@ export class MultiplayerGameEngine {
   }
 
   update(deltaTime: number) {
-    this.player1Engine.update(deltaTime);
-    this.player2Engine.update(deltaTime);
+    // Only update the local player's engine.
+    // The opponent's state comes authoritatively from the network, so running
+    // a local simulation of them causes "respawn" glitches: the local engine
+    // crashes their dino (missing inputs) and then the real network state
+    // corrects it, making the dino appear to teleport back to life.
+    const localEngine = this.localPlayerId === 'player1' ? this.player1Engine : this.player2Engine;
+    localEngine.update(deltaTime);
   }
 
   applyInput(playerId: 'player1' | 'player2', input: PlayerInput) {
     const engine = playerId === 'player1' ? this.player1Engine : this.player2Engine;
+
+    // In multiplayer, a crashed engine must NOT restart — the game ends via
+    // server game_over. Allowing restart here causes the engine to diverge
+    // from what the server and opponent believe (they already received CRASHED).
+    if (engine.getState().gameState === 'CRASHED') return;
 
     switch (input) {
       case PlayerInput.JUMP:
