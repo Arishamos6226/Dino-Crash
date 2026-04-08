@@ -49,7 +49,6 @@ export default function MultiplayerScreen() {
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
   const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
   const crashSentRef = useRef(false);
-  const opponentCrashScoreRef = useRef<number | null>(null);
 
   const networkManager = NetworkManager.getInstance();
 
@@ -219,25 +218,6 @@ export default function MultiplayerScreen() {
   const isSweating = isLocalCrashed && !isOpponentCrashed && !gameOver;
   const isLocalWinning = isOpponentCrashed && !isLocalCrashed && !gameOver;
 
-  // Capture opponent's score the moment they crash
-  if (isOpponentCrashed && opponentCrashScoreRef.current === null) {
-    opponentCrashScoreRef.current = opponentState.score;
-  }
-
-  // Live bonus: every 500 score above opponent's crash score earns betAmount Fr.
-  const opponentCrashScore = opponentCrashScoreRef.current ?? opponentState.score;
-  const liveBonus = isLocalWinning
-    ? Math.max(0, Math.floor((localState.score - opponentCrashScore) / 500)) * betAmount
-    : 0;
-  const livePotential = betAmount * 2 + liveBonus;
-
-  // Final winnings at game over
-  const myFinalScore = finalScores ? (playerId === 'player1' ? finalScores.player1 : finalScores.player2) : 0;
-  const oppFinalScore = finalScores ? (playerId === 'player1' ? finalScores.player2 : finalScores.player1) : 0;
-  const finalBonus = (winner === playerId && finalScores)
-    ? Math.max(0, Math.floor((myFinalScore - oppFinalScore) / 500)) * betAmount
-    : 0;
-  const totalWinnings = betAmount * 2 + finalBonus;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -247,40 +227,37 @@ export default function MultiplayerScreen() {
         disabled={isLocalCrashed}
         style={styles.page}
       >
-        {/* Header: pot left, title right */}
+        {/* Header: pot + status left, title right */}
         <View style={styles.header}>
-          {isSweating ? (
-            <View style={styles.sweatingBanner}>
-              <Text style={styles.sweatingTitle}>😰 SCHWITZEN!</Text>
-            </View>
-          ) : isLocalWinning ? (
-            <View style={styles.winningBanner}>
-              <Text style={styles.winningTitle}>🏆 +{liveBonus} Fr. Bonus</Text>
-              <Text style={styles.winningSubtext}>Pot: {livePotential} Fr. • alle 500 Pkt. +{betAmount} Fr.</Text>
-            </View>
-          ) : (
+          <View style={styles.headerLeft}>
             <View style={styles.potContainer}>
               <Text style={styles.potLabel}>💰 POT</Text>
               <Text style={styles.potAmount}>{betAmount * 2} Fr.</Text>
             </View>
-          )}
-          <View style={styles.titleBlock}>
-            <Text style={styles.titleMain}>MULTIPLAYER</Text>
-            <Text style={styles.titleSub}>Franken wetten</Text>
+            {isSweating && (
+              <Text style={styles.statusBadgeSweating}>😰 Schwitzen!</Text>
+            )}
+            {isLocalWinning && (
+              <Text style={styles.statusBadgeWinning}>🏆 Winning!</Text>
+            )}
           </View>
+          <Text style={styles.titleMain}>MULTIPLAYER</Text>
         </View>
 
         <View style={styles.gameContainer}>
           {/* Player 1 Lane */}
           <View style={styles.playerSection}>
+            <Text style={[
+              styles.playerTag,
+              playerId === 'player1' ? styles.playerTagYou : styles.playerTagOpp,
+            ]}>
+              {playerId === 'player1' ? 'YOU' : 'OPPONENT'}
+            </Text>
             <View
               style={[
                 styles.laneWrapper,
-                {
-                  width: gameWidth,
-                  height: gameHeight,
-                  borderColor: playerId === 'player1' ? Colors.game.casinoGold : Colors.game.borderColor,
-                }
+                playerId === 'player1' ? styles.laneWrapperLocal : styles.laneWrapperOpp,
+                { width: gameWidth, height: gameHeight },
               ]}
             >
               <PlayerLane
@@ -296,14 +273,17 @@ export default function MultiplayerScreen() {
 
           {/* Player 2 Lane */}
           <View style={styles.playerSection}>
+            <Text style={[
+              styles.playerTag,
+              playerId === 'player2' ? styles.playerTagYou : styles.playerTagOpp,
+            ]}>
+              {playerId === 'player2' ? 'YOU' : 'OPPONENT'}
+            </Text>
             <View
               style={[
                 styles.laneWrapper,
-                {
-                  width: gameWidth,
-                  height: gameHeight,
-                  borderColor: playerId === 'player2' ? Colors.game.casinoGold : Colors.game.borderColor,
-                }
+                playerId === 'player2' ? styles.laneWrapperLocal : styles.laneWrapperOpp,
+                { width: gameWidth, height: gameHeight },
               ]}
             >
               <PlayerLane
@@ -326,10 +306,7 @@ export default function MultiplayerScreen() {
             {winner === playerId && (
               <View style={styles.winningsContainer}>
                 <Text style={styles.winningsLabel}>Gewinn:</Text>
-                <Text style={styles.winningsAmount}>+{totalWinnings} Fr.</Text>
-                {finalBonus > 0 && (
-                  <Text style={styles.winningsBonus}>inkl. {finalBonus} Fr. Bonus</Text>
-                )}
+                <Text style={styles.winningsAmount}>+{betAmount} Fr.</Text>
               </View>
             )}
             {winner !== playerId && (
@@ -376,19 +353,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginBottom: 4,
   },
+  headerLeft: {
+    gap: 4,
+  },
   potContainer: {
     backgroundColor: Colors.game.gameBackground,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: Colors.game.accentGold,
     alignItems: 'center',
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    flexDirection: 'row',
+    gap: 6,
   },
   potLabel: {
     fontSize: 10,
@@ -397,74 +374,31 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   potAmount: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 1,
+  },
+  statusBadgeSweating: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.game.casinoRed,
+    letterSpacing: 0.5,
+  },
+  statusBadgeWinning: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#00ff88',
+    letterSpacing: 0.5,
+  },
+  titleMain: {
     fontSize: 16,
     fontWeight: '900',
     color: Colors.game.accentGold,
-    letterSpacing: 1,
-  },
-  sweatingBanner: {
-    backgroundColor: Colors.game.casinoRed,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.game.accentGold,
-    shadowColor: Colors.game.casinoRed,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  sweatingTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 1,
-  },
-  winningBanner: {
-    backgroundColor: 'rgba(0,180,0,0.15)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.game.accentGold,
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  winningTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 1,
-  },
-  winningSubtext: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.game.subtitleText,
-    marginTop: 2,
-  },
-  titleBlock: {
-    alignItems: 'flex-end',
-  },
-  titleMain: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 2,
+    letterSpacing: 3,
     textShadowColor: 'rgba(255,215,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
-  },
-  titleSub: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.game.subtitleText,
-    marginTop: 1,
   },
 
   /* ── Game ── */
@@ -476,17 +410,43 @@ const styles = StyleSheet.create({
   },
   playerSection: {
     alignItems: 'center',
+    gap: 4,
+  },
+  playerTag: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  playerTagYou: {
+    color: Colors.game.playerHighlight,
+    textShadowColor: 'rgba(0, 212, 255, 0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
+  playerTagOpp: {
+    color: 'rgba(255,215,0,0.5)',
   },
   laneWrapper: {
     backgroundColor: Colors.game.gameBackground,
     overflow: 'hidden',
     borderRadius: 10,
     borderWidth: 3,
+  },
+  laneWrapperLocal: {
+    borderColor: Colors.game.playerHighlight,
+    shadowColor: Colors.game.playerHighlight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  laneWrapperOpp: {
+    borderColor: 'rgba(255,215,0,0.35)',
     shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   divider: {
     height: 2,
@@ -549,12 +509,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 1,
-  },
-  winningsBonus: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.game.subtitleText,
-    marginTop: 2,
   },
   lossContainer: {
     backgroundColor: Colors.game.gameBackground,

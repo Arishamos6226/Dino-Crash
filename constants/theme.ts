@@ -41,6 +41,7 @@ export const Colors = {
     casinoGreen: '#ffd700',
     casinoGold: '#ffd700',
     casinoBlack: '#000000',
+    playerHighlight: '#00d4ff',
   },
 } as const;
 

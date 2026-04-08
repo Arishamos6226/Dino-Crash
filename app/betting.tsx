@@ -9,7 +9,7 @@ const BET_AMOUNTS = [1, 2, 5, 10, 20];
 export default function BettingScreen() {
   const params = useLocalSearchParams<{ roomId: string; playerId: string; seed: string }>();
   const router = useRouter();
-  const [selectedBet, setSelectedBet] = useState(50);
+  const [selectedBet, setSelectedBet] = useState(BET_AMOUNTS[0]);
   const [isWaiting, setIsWaiting] = useState(false);
   const navigatedRef = useRef(false);
 

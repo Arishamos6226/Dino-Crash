@@ -55,8 +55,12 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
       })}
 
       <View style={[styles.labelContainer, { top: GameUI.scoreOffset * scale }]}>
-        <Text style={[styles.label, { fontSize: 10 * scale }]}>
-          {label} {isLocal && '(YOU)'}
+        <Text style={[
+          styles.label,
+          { fontSize: 10 * scale },
+          isLocal && styles.labelLocal,
+        ]}>
+          {label}
         </Text>
       </View>
 
@@ -109,6 +113,10 @@ const styles = StyleSheet.create({
     color: Colors.game.textColor,
     fontFamily: 'monospace',
     opacity: 0.7,
+  },
+  labelLocal: {
+    color: Colors.game.playerHighlight,
+    opacity: 1,
   },
   scoreContainer: {
     position: 'absolute',
