@@ -9,8 +9,7 @@ interface DinoSpriteProps {
   scale?: number;
 }
 
-export function DinoSprite({ dino, bottom, scale = 1 }: DinoSpriteProps) {
-  // Determine which sprite to show
+function DinoSpriteInner({ dino, bottom, scale = 1 }: DinoSpriteProps) {
   let sprite: { x: number; y: number; width: number; height: number };
 
   if (dino.status === 'CRASHED') {
@@ -39,3 +38,12 @@ export function DinoSprite({ dino, bottom, scale = 1 }: DinoSpriteProps) {
     />
   );
 }
+
+export const DinoSprite = React.memo(DinoSpriteInner, (prev, next) =>
+  prev.dino.x === next.dino.x &&
+  prev.dino.y === next.dino.y &&
+  prev.dino.status === next.dino.status &&
+  prev.dino.currentFrame === next.dino.currentFrame &&
+  prev.bottom === next.bottom &&
+  prev.scale === next.scale
+);

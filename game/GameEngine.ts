@@ -9,6 +9,8 @@ import { SpawnSystem } from './systems/SpawnSystem';
 import type { RenderState } from './types';
 
 export class GameEngine {
+  private static readonly NIGHT_CYCLE_DISTANCE = NIGHT_MODE.INVERT_DISTANCE * 2;
+
   private dino: Dino;
   private obstacles: Obstacle[];
   private clouds: Cloud[];
@@ -87,8 +89,7 @@ export class GameEngine {
 
   private updateNightMode() {
     const distance = this.scoreSystem.getDistance();
-    const cycleDistance = NIGHT_MODE.INVERT_DISTANCE * 2;
-    const positionInCycle = distance % cycleDistance;
+    const positionInCycle = distance % GameEngine.NIGHT_CYCLE_DISTANCE;
 
     const shouldBeNight = positionInCycle < NIGHT_MODE.INVERT_DISTANCE;
 

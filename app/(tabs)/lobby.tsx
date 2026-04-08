@@ -66,59 +66,52 @@ export default function LobbyScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🦖 DINO CRASH</Text>
+        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>🦖 DINO CRASH</Text>
         <Text style={styles.subtitle}>Online Matchmaking</Text>
       </View>
 
       <View style={styles.statusCard}>
         {status === 'idle' && (
           <>
-            <Text style={styles.idleIcon}>🎮</Text>
-            <Text style={styles.idleText}>Ready to Race?</Text>
-            <Text style={styles.subtleText}>Find an opponent and place your bet</Text>
+            <Text style={styles.idleText}>Bereit?</Text>
+            <Text style={styles.subtleText}>Finde einen Gegner und platziere deinen Einsatz</Text>
           </>
         )}
 
         {status === 'connecting' && (
           <>
-            <ActivityIndicator size="large" color={Colors.game.casinoGold} />
-            <Text style={styles.statusText}>Connecting to server...</Text>
-            <Text style={styles.subtleText}>Establishing connection</Text>
+            <ActivityIndicator size="small" color={Colors.game.casinoGold} />
+            <Text style={styles.statusText}>Verbinde...</Text>
           </>
         )}
 
         {status === 'searching' && (
           <>
-            <ActivityIndicator size="large" color={Colors.game.casinoGold} />
-            <Text style={styles.statusText}>Finding opponent...</Text>
-            <Text style={styles.subtleText}>Waiting for another player to join</Text>
+            <ActivityIndicator size="small" color={Colors.game.casinoGold} />
+            <Text style={styles.statusText}>Suche Gegner...</Text>
+            <Text style={styles.subtleText}>Warte auf einen anderen Spieler</Text>
           </>
         )}
 
         {status === 'found' && (
           <>
-            <Text style={styles.foundIcon}>✓</Text>
-            <Text style={styles.foundText}>Opponent Found!</Text>
-            <Text style={styles.statusText}>Preparing game...</Text>
+            <Text style={styles.foundText}>Gegner gefunden!</Text>
+            <Text style={styles.subtleText}>Spiel wird vorbereitet...</Text>
           </>
         )}
       </View>
 
       {status === 'idle' && (
         <Pressable style={styles.findButton} onPress={handleFindOpponent}>
-          <Text style={styles.findButtonText}>Find Opponent</Text>
+          <Text style={styles.findButtonText}>Gegner finden</Text>
         </Pressable>
       )}
 
       {(status === 'connecting' || status === 'searching') && (
         <Pressable style={styles.cancelButton} onPress={handleCancel}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={styles.cancelButtonText}>Abbrechen</Text>
         </Pressable>
       )}
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Get ready to race • Place your bet</Text>
-      </View>
     </View>
   );
 }
@@ -128,116 +121,92 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 40,
   },
   header: {
     width: '100%',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   title: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: '900',
     color: Colors.game.titleText,
-    letterSpacing: 3,
-    textShadowColor: 'rgba(255, 215, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 12,
+    letterSpacing: 2,
+    width: '100%',
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: Colors.game.subtitleText,
     letterSpacing: 1,
+    opacity: 0.7,
   },
   statusCard: {
     backgroundColor: Colors.game.gameBackground,
-    borderRadius: 20,
-    padding: 40,
-    minWidth: 320,
+    borderRadius: 16,
+    padding: 28,
+    width: '100%',
     alignItems: 'center',
-    gap: 20,
-    borderWidth: 4,
-    borderColor: Colors.game.accentGold,
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  foundIcon: {
-    fontSize: 64,
-    color: Colors.game.accentGold,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.2)',
   },
   statusText: {
-    fontSize: 20,
+    fontSize: 16,
     color: Colors.game.accentGold,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   subtleText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.game.subtitleText,
-    fontWeight: '500',
+    fontWeight: '400',
+    textAlign: 'center',
+    opacity: 0.7,
   },
   foundText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 2,
-  },
-  idleIcon: {
-    fontSize: 64,
-  },
-  idleText: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     color: Colors.game.accentGold,
     letterSpacing: 1,
   },
+  idleText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.game.accentGold,
+    letterSpacing: 0.5,
+  },
   findButton: {
-    backgroundColor: Colors.game.casinoBlack,
-    paddingVertical: 18,
-    paddingHorizontal: 48,
+    width: '100%',
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 1,
     borderColor: Colors.game.accentGold,
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 8,
+    backgroundColor: Colors.game.gameBackground,
   },
   findButtonText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 1.5,
-  },
-  cancelButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.game.accentGold,
-  },
-  cancelButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.game.accentGold,
+    letterSpacing: 1,
   },
-  footer: {
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
     alignItems: 'center',
-    opacity: 0.6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.3)',
   },
-  footerText: {
-    fontSize: 12,
-    color: Colors.game.accentGold,
-    fontWeight: '500',
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.game.subtitleText,
   },
 });

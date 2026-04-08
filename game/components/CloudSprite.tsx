@@ -8,7 +8,7 @@ interface CloudSpriteProps {
   scale?: number;
 }
 
-export function CloudSprite({ cloud, scale = 1 }: CloudSpriteProps) {
+function CloudSpriteInner({ cloud, scale = 1 }: CloudSpriteProps) {
   const sprite = SPRITES.CLOUD;
 
   return (
@@ -25,3 +25,9 @@ export function CloudSprite({ cloud, scale = 1 }: CloudSpriteProps) {
     />
   );
 }
+
+export const CloudSprite = React.memo(CloudSpriteInner, (prev, next) =>
+  prev.cloud.x === next.cloud.x &&
+  prev.cloud.y === next.cloud.y &&
+  prev.scale === next.scale
+);

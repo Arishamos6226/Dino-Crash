@@ -49,43 +49,66 @@ export abstract class Obstacle {
 }
 
 export class CactusSmall extends Obstacle {
+  private _collisionBoxes: CollisionBox[];
+
   constructor(id: number, x: number, variant: number = 1) {
     super(id, 'CACTUS_SMALL', x, variant);
     this.width = OBSTACLE.CACTUS_SMALL.WIDTH;
     this.height = OBSTACLE.CACTUS_SMALL.HEIGHT;
     this.y = 0;
-  }
-
-  getCollisionBoxes(): CollisionBox[] {
-    return OBSTACLE.CACTUS_SMALL.COLLISION_BOXES.map((box) => ({
+    this._collisionBoxes = OBSTACLE.CACTUS_SMALL.COLLISION_BOXES.map((box) => ({
       x: this.x + box.x,
       y: this.y + box.y,
       width: box.width,
       height: box.height,
     }));
   }
+
+  update(speed: number, deltaTime: number) {
+    super.update(speed, deltaTime);
+    const boxes = OBSTACLE.CACTUS_SMALL.COLLISION_BOXES;
+    for (let i = 0; i < this._collisionBoxes.length; i++) {
+      this._collisionBoxes[i].x = this.x + boxes[i].x;
+    }
+  }
+
+  getCollisionBoxes(): CollisionBox[] {
+    return this._collisionBoxes;
+  }
 }
 
 export class CactusLarge extends Obstacle {
+  private _collisionBoxes: CollisionBox[];
+
   constructor(id: number, x: number, variant: number = 1) {
     super(id, 'CACTUS_LARGE', x, variant);
     this.width = OBSTACLE.CACTUS_LARGE.WIDTH;
     this.height = OBSTACLE.CACTUS_LARGE.HEIGHT;
     this.y = 0;
-  }
-
-  getCollisionBoxes(): CollisionBox[] {
-    return OBSTACLE.CACTUS_LARGE.COLLISION_BOXES.map((box) => ({
+    this._collisionBoxes = OBSTACLE.CACTUS_LARGE.COLLISION_BOXES.map((box) => ({
       x: this.x + box.x,
       y: this.y + box.y,
       width: box.width,
       height: box.height,
     }));
   }
+
+  update(speed: number, deltaTime: number) {
+    super.update(speed, deltaTime);
+    const boxes = OBSTACLE.CACTUS_LARGE.COLLISION_BOXES;
+    for (let i = 0; i < this._collisionBoxes.length; i++) {
+      this._collisionBoxes[i].x = this.x + boxes[i].x;
+    }
+  }
+
+  getCollisionBoxes(): CollisionBox[] {
+    return this._collisionBoxes;
+  }
 }
 
 export class Pterodactyl extends Obstacle {
   private heightIndex: number;
+  private _collisionBoxes: CollisionBox[];
 
   constructor(id: number, x: number, heightIndex: number = 0) {
     super(id, 'PTERODACTYL', x, 1);
@@ -93,6 +116,12 @@ export class Pterodactyl extends Obstacle {
     this.height = OBSTACLE.PTERODACTYL.HEIGHT;
     this.heightIndex = Math.min(heightIndex, OBSTACLE.PTERODACTYL.Y_POS.length - 1);
     this.y = OBSTACLE.PTERODACTYL.Y_POS_OFFSET[this.heightIndex];
+    this._collisionBoxes = OBSTACLE.PTERODACTYL.COLLISION_BOXES.map((box) => ({
+      x: this.x + box.x,
+      y: this.y + box.y,
+      width: box.width,
+      height: box.height,
+    }));
   }
 
   update(speed: number, deltaTime: number) {
@@ -103,14 +132,14 @@ export class Pterodactyl extends Obstacle {
       this.currentFrame = (this.currentFrame + 1) % OBSTACLE.PTERODACTYL.NUM_FRAMES;
       this.frameTimer = 0;
     }
+
+    const boxes = OBSTACLE.PTERODACTYL.COLLISION_BOXES;
+    for (let i = 0; i < this._collisionBoxes.length; i++) {
+      this._collisionBoxes[i].x = this.x + boxes[i].x;
+    }
   }
 
   getCollisionBoxes(): CollisionBox[] {
-    return OBSTACLE.PTERODACTYL.COLLISION_BOXES.map((box) => ({
-      x: this.x + box.x,
-      y: this.y + box.y,
-      width: box.width,
-      height: box.height,
-    }));
+    return this._collisionBoxes;
   }
 }

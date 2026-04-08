@@ -18,7 +18,7 @@ const SPRITE_MAP = {
   PTERODACTYL: [SPRITES.PTERODACTYL.FLYING_1, SPRITES.PTERODACTYL.FLYING_2],
 } as const;
 
-export function ObstacleSprite({ obstacle, bottom, scale = 1 }: ObstacleSpriteProps) {
+function ObstacleSpriteInner({ obstacle, bottom, scale = 1 }: ObstacleSpriteProps) {
   const sprites = SPRITE_MAP[obstacle.type];
   if (!sprites) return null;
 
@@ -57,3 +57,13 @@ export function ObstacleSprite({ obstacle, bottom, scale = 1 }: ObstacleSpritePr
     />
   );
 }
+
+export const ObstacleSprite = React.memo(ObstacleSpriteInner, (prev, next) =>
+  prev.obstacle.x === next.obstacle.x &&
+  prev.obstacle.y === next.obstacle.y &&
+  prev.obstacle.currentFrame === next.obstacle.currentFrame &&
+  prev.obstacle.type === next.obstacle.type &&
+  prev.obstacle.variant === next.obstacle.variant &&
+  prev.bottom === next.bottom &&
+  prev.scale === next.scale
+);

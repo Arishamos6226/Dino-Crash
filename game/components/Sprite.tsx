@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, View, StyleSheet, ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { Image, View, ViewStyle } from 'react-native';
 import { SPRITE_SHEET, SPRITE_SHEET_DIMENSIONS } from '../sprites';
 
 interface SpriteProps {
@@ -11,33 +11,32 @@ interface SpriteProps {
   scale?: number;
 }
 
-export function Sprite({ x, y, width, height, style, scale = 1 }: SpriteProps) {
-  const scaledWidth = width * scale;
-  const scaledHeight = height * scale;
+export const Sprite = React.memo(function Sprite({ x, y, width, height, style, scale = 1 }: SpriteProps) {
+  const containerStyle = useMemo(() => [
+    {
+      width: width * scale,
+      height: height * scale,
+      overflow: 'hidden' as const,
+      position: 'absolute' as const,
+    },
+    style,
+  ], [width, height, scale, style]);
+
+  const imageStyle = useMemo(() => ({
+    position: 'absolute' as const,
+    width: SPRITE_SHEET_DIMENSIONS.WIDTH * scale,
+    height: SPRITE_SHEET_DIMENSIONS.HEIGHT * scale,
+    left: -x * scale,
+    top: -y * scale,
+  }), [x, y, scale]);
 
   return (
-    <View
-      style={[
-        {
-          width: scaledWidth,
-          height: scaledHeight,
-          overflow: 'hidden',
-          position: 'absolute',
-        },
-        style,
-      ]}
-    >
+    <View style={containerStyle}>
       <Image
         source={SPRITE_SHEET}
-        style={{
-          position: 'absolute',
-          width: SPRITE_SHEET_DIMENSIONS.WIDTH * scale,
-          height: SPRITE_SHEET_DIMENSIONS.HEIGHT * scale,
-          left: -x * scale,
-          top: -y * scale,
-        }}
+        style={imageStyle}
         resizeMode="stretch"
       />
     </View>
   );
-}
+});

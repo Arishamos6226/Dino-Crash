@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GameEngine } from '../../game/GameEngine';
 import { GAME } from '../../game/constants';
 import type { RenderState } from '../../game/types';
@@ -20,19 +21,20 @@ export default function HomeScreen() {
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pressStartTimeRef = useRef<number>(0);
 
-  const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
-  const maxGameWidth = Math.min(windowWidth - GameUI.screenPadding, GameUI.maxGameWidth);
-  const maxGameHeight = windowHeight * GameUI.screenHeightRatio;
+  const { scale, gameWidth, gameHeight } = useMemo(() => {
+    const aspectRatio = GAME.WIDTH / GAME.HEIGHT;
+    const maxGameWidth = Math.min(windowWidth - GameUI.screenPadding, GameUI.maxGameWidth);
+    const maxGameHeight = windowHeight * GameUI.screenHeightRatio;
+    let gw = maxGameWidth;
+    let gh = gw / aspectRatio;
+    if (gh > maxGameHeight) {
+      gh = maxGameHeight;
+      gw = gh * aspectRatio;
+    }
+    return { scale: gw / GAME.WIDTH, gameWidth: gw, gameHeight: gh };
+  }, [windowWidth, windowHeight]);
 
-  let gameWidth = maxGameWidth;
-  let gameHeight = gameWidth / aspectRatio;
-
-  if (gameHeight > maxGameHeight) {
-    gameHeight = maxGameHeight;
-    gameWidth = gameHeight * aspectRatio;
-  }
-
-  const scale = gameWidth / GAME.WIDTH;
+  const gameAreaStyle = useMemo(() => [styles.gameArea, { width: gameWidth, height: gameHeight }], [gameWidth, gameHeight]);
 
   const handleJump = useCallback(() => {
     engineRef.current.jump();
@@ -102,11 +104,10 @@ export default function HomeScreen() {
   }, [handleJump, handleDuckStart, handleDuckEnd]);
 
   useEffect(() => {
-    let lastTime = Date.now();
+    let lastTime = performance.now();
     let animationFrameId: number;
 
-    const gameLoop = () => {
-      const currentTime = Date.now();
+    const gameLoop = (currentTime: number) => {
       const deltaTime = currentTime - lastTime;
       lastTime = currentTime;
 
@@ -116,7 +117,7 @@ export default function HomeScreen() {
       animationFrameId = requestAnimationFrame(gameLoop);
     };
 
-    animationFrameId = requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame((t) => { lastTime = t; animationFrameId = requestAnimationFrame(gameLoop); });
 
     return () => {
       cancelAnimationFrame(animationFrameId);
@@ -127,9 +128,8 @@ export default function HomeScreen() {
   const dinoBottom = GAME.GROUND_HEIGHT + dino.y;
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Text style={styles.title}>🦖 DINO CRASH</Text>
         <View style={styles.scoreBoard}>
           <View style={styles.scoreItem}>
             <Text style={styles.scoreLabel}>SCORE</Text>
@@ -141,6 +141,7 @@ export default function HomeScreen() {
             <Text style={styles.scoreValue}>{String(highScore).padStart(5, '0')}</Text>
           </View>
         </View>
+        <Text style={styles.title} numberOfLines={1}>🦖 DINO CRASH</Text>
       </View>
 
       <Pressable
@@ -148,57 +149,47 @@ export default function HomeScreen() {
         onPressOut={handleTouchEnd}
         style={styles.gameCard}
       >
-        <View
-          style={[
-            styles.gameArea,
-            {
-              width: gameWidth,
-              height: gameHeight,
-            }
-          ]}
-        >
-        <View
-          style={[
-            styles.sky,
-            nightModeFade > 0 && {
-              backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.ground,
-            {
-              height: GAME.GROUND_HEIGHT * scale,
-              borderTopWidth: GameUI.borderWidth * scale,
-            }
-          ]}
-        />
+        <View style={gameAreaStyle}>
+          <View
+            style={[
+              styles.sky,
+              nightModeFade > 0 && {
+                backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.ground,
+              {
+                height: GAME.GROUND_HEIGHT * scale,
+                borderTopWidth: GameUI.borderWidth * scale,
+              }
+            ]}
+          />
 
-        {clouds.map((cloud) => (
-          <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
-        ))}
+          {clouds.map((cloud) => (
+            <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
+          ))}
 
-        <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
+          <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
 
-        {obstacles.map((obstacle) => {
-          const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
-          return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} scale={scale} />;
-        })}
+          {obstacles.map((obstacle) => {
+            const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
+            return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} scale={scale} />;
+          })}
 
-        {gameState === 'CRASHED' && (
-          <View style={styles.overlay}>
-            <Text style={[styles.gameOver, { fontSize: 28 * Math.min(scale, 1.5) }]}>GAME OVER</Text>
-            <Text style={[styles.restart, { fontSize: 16 * Math.min(scale, 1.5) }]}>Tap to Restart</Text>
-          </View>
-        )}
-      </View>
+          {gameState === 'CRASHED' && (
+            <View style={styles.overlay}>
+              <Text style={[styles.gameOver, { fontSize: 26 * Math.min(scale, 1.5) }]}>GAME OVER</Text>
+              <Text style={[styles.restart, { fontSize: 13 * Math.min(scale, 1.5) }]}>Tippen zum Neustart</Text>
+            </View>
+          )}
+        </View>
       </Pressable>
 
-      <View style={styles.controls}>
-        <Text style={styles.controlText}>TAP = JUMP • HOLD = DUCK</Text>
-      </View>
-    </View>
+      <Text style={styles.controlText}>TIPPEN = SPRINGEN  •  HALTEN = DUCKEN</Text>
+    </SafeAreaView>
   );
 }
 
@@ -206,80 +197,68 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 20,
+    padding: GameUI.pagePadding,
   },
   header: {
+    width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 32,
+    fontSize: 16,
     fontWeight: '900',
-    color: Colors.game.titleText,
-    textAlign: 'center',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(255, 215, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
-    marginBottom: 16,
+    color: Colors.game.accentGold,
+    letterSpacing: 3,
   },
   scoreBoard: {
     flexDirection: 'row',
     backgroundColor: Colors.game.gameBackground,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 3,
-    borderColor: Colors.game.borderColor,
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.2)',
     alignItems: 'center',
-    gap: 24,
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    gap: 12,
   },
   scoreItem: {
     alignItems: 'center',
-    flex: 1,
   },
   scoreLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: Colors.game.subtitleText,
     letterSpacing: 1,
-    marginBottom: 4,
+    opacity: 0.7,
   },
   scoreValue: {
-    fontSize: 24,
+    fontSize: 14,
     fontWeight: '900',
     color: Colors.game.accentGold,
     fontFamily: 'monospace',
   },
   scoreDivider: {
-    width: 2,
-    height: 30,
-    backgroundColor: Colors.game.borderColor,
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,215,0,0.2)',
   },
   gameCard: {
     flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
   },
   gameArea: {
-    borderWidth: 4,
-    borderColor: Colors.game.borderColor,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.2)',
     backgroundColor: Colors.game.gameBackground,
     overflow: 'hidden',
     position: 'relative',
-    borderRadius: 20,
-    shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    borderRadius: 16,
   },
   sky: {
     ...StyleSheet.absoluteFillObject,
@@ -293,28 +272,28 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.game.borderColor,
     backgroundColor: Colors.game.groundColor,
   },
-  scoreBox: {
-    position: 'absolute',
-    flexDirection: 'row',
-  },
-  scoreText: {
-    fontWeight: '600',
-    color: Colors.game.textColor,
-    fontFamily: 'monospace',
-  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.game.overlayBackground,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   gameOver: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.game.textColor,
     letterSpacing: 2,
   },
   restart: {
-    color: Colors.game.textColor,
+    color: Colors.game.subtitleText,
+    opacity: 0.7,
+  },
+  controlText: {
+    fontSize: 11,
+    color: Colors.game.subtitleText,
+    opacity: 0.5,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginTop: 8,
   },
 });

@@ -49,6 +49,9 @@ export default function MultiplayerScreen() {
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
   const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
   const crashSentRef = useRef(false);
+  const lastMilestoneRef = useRef(0);
+  const [milestoneNotification, setMilestoneNotification] = useState<number | null>(null);
+  const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const networkManager = NetworkManager.getInstance();
 
@@ -102,6 +105,16 @@ export default function MultiplayerScreen() {
         if (localState.gameState === 'CRASHED' && !crashSentRef.current) {
           crashSentRef.current = true;
           networkManager.sendCrash(localState.score);
+        }
+
+        if (betAmount > 0) {
+          const currentMilestone = Math.floor(localState.score / 500);
+          if (currentMilestone > lastMilestoneRef.current) {
+            lastMilestoneRef.current = currentMilestone;
+            if (milestoneTimerRef.current) clearTimeout(milestoneTimerRef.current);
+            setMilestoneNotification(currentMilestone * betAmount);
+            milestoneTimerRef.current = setTimeout(() => setMilestoneNotification(null), 2000);
+          }
         }
       }
 
@@ -234,10 +247,13 @@ export default function MultiplayerScreen() {
               <Text style={styles.potLabel}>💰 POT</Text>
               <Text style={styles.potAmount}>{betAmount * 2} Fr.</Text>
             </View>
-            {isSweating && (
+            {milestoneNotification !== null && (
+              <Text style={styles.milestoneToast}>+{milestoneNotification} Fr. 🎯</Text>
+            )}
+            {milestoneNotification === null && isSweating && (
               <Text style={styles.statusBadgeSweating}>😰 Schwitzen!</Text>
             )}
-            {isLocalWinning && (
+            {milestoneNotification === null && isLocalWinning && (
               <Text style={styles.statusBadgeWinning}>🏆 Winning!</Text>
             )}
           </View>
@@ -297,35 +313,47 @@ export default function MultiplayerScreen() {
         </View>
 
         {/* Game Over Overlay */}
-        {gameOver && winner && finalScores && (
-          <View style={styles.overlay}>
-            <Text style={styles.gameOver}>GAME OVER</Text>
-            <Text style={[styles.winner, winner !== playerId && styles.loser]}>
-              {winner === playerId ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
-            </Text>
-            {winner === playerId && (
-              <View style={styles.winningsContainer}>
-                <Text style={styles.winningsLabel}>Gewinn:</Text>
-                <Text style={styles.winningsAmount}>+{betAmount} Fr.</Text>
+        {gameOver && winner && finalScores && (() => {
+          const myScore = playerId === 'player1' ? finalScores.player1 : finalScores.player2;
+          const opScore = playerId === 'player1' ? finalScores.player2 : finalScores.player1;
+          const myMilestones = Math.floor(myScore / 500);
+          const opMilestones = Math.floor(opScore / 500);
+          const myEarnings = myMilestones * betAmount;
+          const opEarnings = opMilestones * betAmount;
+          const netResult = myEarnings - opEarnings;
+          const isWinner = winner === playerId;
+          return (
+            <View style={styles.overlay}>
+              <Text style={styles.gameOver}>GAME OVER</Text>
+              <Text style={[styles.winner, !isWinner && styles.loser]}>
+                {isWinner ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
+              </Text>
+              <View style={netResult >= 0 ? styles.winningsContainer : styles.lossContainer}>
+                <Text style={netResult >= 0 ? styles.winningsLabel : styles.lossLabel}>
+                  Meilensteine ({myMilestones}×500):
+                </Text>
+                <Text style={netResult >= 0 ? styles.winningsAmount : styles.lossAmount}>
+                  {netResult >= 0 ? '+' : ''}{netResult} Fr.
+                </Text>
+                <Text style={styles.milestoneDetail}>
+                  Du: {myMilestones}×{betAmount} Fr. = +{myEarnings} Fr.
+                </Text>
+                <Text style={styles.milestoneDetail}>
+                  Gegner: {opMilestones}×{betAmount} Fr. = -{opEarnings} Fr.
+                </Text>
               </View>
-            )}
-            {winner !== playerId && (
-              <View style={styles.lossContainer}>
-                <Text style={styles.lossLabel}>Verlust:</Text>
-                <Text style={styles.lossAmount}>-{betAmount} Fr.</Text>
-              </View>
-            )}
-            <Text style={styles.scores}>
-              Your Score: {playerId === 'player1' ? finalScores.player1 : finalScores.player2}
-            </Text>
-            <Text style={styles.scores}>
-              Opponent: {playerId === 'player1' ? finalScores.player2 : finalScores.player1}
-            </Text>
-            <Pressable style={styles.restartButton} onPress={handleRestart}>
-              <Text style={styles.restartText}>Back to Menu</Text>
-            </Pressable>
-          </View>
-        )}
+              <Text style={styles.scores}>
+                Dein Score: {myScore}
+              </Text>
+              <Text style={styles.scores}>
+                Gegner: {opScore}
+              </Text>
+              <Pressable style={styles.restartButton} onPress={handleRestart}>
+                <Text style={styles.restartText}>Back to Menu</Text>
+              </Pressable>
+            </View>
+          );
+        })()}
       </Pressable>
     </SafeAreaView>
   );
@@ -378,6 +406,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 1,
+  },
+  milestoneToast: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255,215,0,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   statusBadgeSweating: {
     fontSize: 11,
@@ -537,6 +574,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.casinoRed,
     letterSpacing: 1,
+  },
+  milestoneDetail: {
+    fontSize: 13,
+    color: Colors.game.subtitleText,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   scores: {
     fontSize: 18,

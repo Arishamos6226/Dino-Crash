@@ -16,12 +16,9 @@ export class CollisionSystem {
   checkCollision(dino: Dino, obstacles: Obstacle[]): boolean {
     const dinoBoxes = dino.getCollisionBoxes();
 
-    // Only check nearby obstacles for performance
-    const nearbyObstacles = obstacles.filter(
-      (obs) => Math.abs(obs.x - dino.x) < 100
-    );
+    for (const obstacle of obstacles) {
+      if (Math.abs(obstacle.x - dino.x) >= 100) continue;
 
-    for (const obstacle of nearbyObstacles) {
       const obstacleBoxes = obstacle.getCollisionBoxes();
 
       for (const dinoBox of dinoBoxes) {
