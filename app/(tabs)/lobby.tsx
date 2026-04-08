@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import NetworkManager from '../../game/network/NetworkManager';
 import { GameMode } from '../../shared/network-types';
@@ -11,43 +11,57 @@ const SERVER_URL = Platform.OS === 'web'
 
 const GAME_START_DELAY_MS = 1000;
 
+type Status = 'idle' | 'connecting' | 'searching' | 'found';
+
 export default function LobbyScreen() {
-  const [status, setStatus] = useState<'connecting' | 'searching' | 'found'>('connecting');
+  const [status, setStatus] = useState<Status>('idle');
   const router = useRouter();
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
+    navigatedRef.current = false;
+  }, []);
+
+  const handleFindOpponent = async () => {
+    if (status !== 'idle') return;
+    setStatus('connecting');
+
     const networkManager = NetworkManager.getInstance();
 
-    const connectAndSearch = async () => {
-      try {
-        await networkManager.connect(SERVER_URL);
+    try {
+      await networkManager.connect(SERVER_URL);
+      setStatus('searching');
+
+      networkManager.onMatchmakingStatus(() => {
         setStatus('searching');
+      });
 
-        networkManager.onMatchmakingStatus(() => {
-          setStatus('searching');
-        });
+      networkManager.findMatch(GameMode.VS_ONLINE, (payload) => {
+        if (navigatedRef.current) return;
+        navigatedRef.current = true;
+        setStatus('found');
 
-        networkManager.findMatch(GameMode.VS_ONLINE, (payload) => {
-          setStatus('found');
+        setTimeout(() => {
+          router.replace({
+            pathname: '/betting',
+            params: {
+              roomId: payload.roomId,
+              seed: payload.seed.toString(),
+              playerId: payload.playerId,
+            }
+          });
+        }, GAME_START_DELAY_MS);
+      });
+    } catch (error) {
+      setStatus('idle');
+    }
+  };
 
-          setTimeout(() => {
-            router.replace({
-              pathname: '/betting',
-              params: {
-                roomId: payload.roomId,
-                seed: payload.seed.toString(),
-                playerId: payload.playerId,
-              }
-            });
-          }, GAME_START_DELAY_MS);
-        });
-      } catch (error) {
-        setStatus('searching');
-      }
-    };
-
-    connectAndSearch();
-  }, [router]);
+  const handleCancel = () => {
+    const networkManager = NetworkManager.getInstance();
+    networkManager.disconnect();
+    setStatus('idle');
+  };
 
   return (
     <View style={styles.container}>
@@ -57,6 +71,14 @@ export default function LobbyScreen() {
       </View>
 
       <View style={styles.statusCard}>
+        {status === 'idle' && (
+          <>
+            <Text style={styles.idleIcon}>🎮</Text>
+            <Text style={styles.idleText}>Ready to Race?</Text>
+            <Text style={styles.subtleText}>Find an opponent and place your bet</Text>
+          </>
+        )}
+
         {status === 'connecting' && (
           <>
             <ActivityIndicator size="large" color={Colors.game.casinoGold} />
@@ -81,6 +103,18 @@ export default function LobbyScreen() {
           </>
         )}
       </View>
+
+      {status === 'idle' && (
+        <Pressable style={styles.findButton} onPress={handleFindOpponent}>
+          <Text style={styles.findButtonText}>Find Opponent</Text>
+        </Pressable>
+      )}
+
+      {(status === 'connecting' || status === 'searching') && (
+        <Pressable style={styles.cancelButton} onPress={handleCancel}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </Pressable>
+      )}
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Get ready to race • Place your bet</Text>
@@ -153,6 +187,48 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 2,
+  },
+  idleIcon: {
+    fontSize: 64,
+  },
+  idleText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 1,
+  },
+  findButton: {
+    backgroundColor: Colors.game.casinoBlack,
+    paddingVertical: 18,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.game.accentGold,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  findButtonText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 1.5,
+  },
+  cancelButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.game.accentGold,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.game.accentGold,
   },
   footer: {
     alignItems: 'center',
