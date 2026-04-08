@@ -128,7 +128,22 @@ class NetworkManager {
     this.socket.emit('place_bet', payload);
   }
 
-  onBothPlayersReady(callback: () => void) {
+  respondToBet(roomId: string, accepted: boolean) {
+    if (!this.socket) return;
+    this.socket.emit('bet_response', { roomId, accepted });
+  }
+
+  onBetChallenge(callback: (payload: { betAmount: number }) => void) {
+    if (!this.socket) return;
+    this.socket.once('bet_challenge', callback);
+  }
+
+  onBetDeclined(callback: () => void) {
+    if (!this.socket) return;
+    this.socket.once('bet_declined', callback);
+  }
+
+  onBothPlayersReady(callback: (payload: { betAmount: number }) => void) {
     if (!this.socket) return;
     this.socket.once('both_players_ready', callback);
   }

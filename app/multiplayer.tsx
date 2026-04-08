@@ -49,9 +49,9 @@ export default function MultiplayerScreen() {
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
   const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
   const crashSentRef = useRef(false);
+  const opponentCrashScoreRef = useRef<number | null>(null);
   const lastMilestoneRef = useRef(0);
-  const [milestoneNotification, setMilestoneNotification] = useState<number | null>(null);
-  const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [liveMilestones, setLiveMilestones] = useState(0);
 
   const networkManager = NetworkManager.getInstance();
 
@@ -107,13 +107,20 @@ export default function MultiplayerScreen() {
           networkManager.sendCrash(localState.score);
         }
 
-        if (betAmount > 0) {
-          const currentMilestone = Math.floor(localState.score / 500);
-          if (currentMilestone > lastMilestoneRef.current) {
+        // Track opponent's crash score (once)
+        const opponentState = playerId === 'player1' ? newRenderState.player2 : newRenderState.player1;
+        if (opponentState.gameState === 'CRASHED' && opponentCrashScoreRef.current === null) {
+          opponentCrashScoreRef.current = opponentState.score;
+          lastMilestoneRef.current = 0;
+        }
+
+        // Bonus starts only after opponent crashes, counts 500 pts above their crash score
+        if (betAmount > 0 && opponentCrashScoreRef.current !== null && localState.gameState !== 'CRASHED') {
+          const scoreAbove = Math.max(0, localState.score - opponentCrashScoreRef.current);
+          const currentMilestone = Math.floor(scoreAbove / 500);
+          if (currentMilestone !== lastMilestoneRef.current) {
             lastMilestoneRef.current = currentMilestone;
-            if (milestoneTimerRef.current) clearTimeout(milestoneTimerRef.current);
-            setMilestoneNotification(currentMilestone * betAmount);
-            milestoneTimerRef.current = setTimeout(() => setMilestoneNotification(null), 2000);
+            setLiveMilestones(currentMilestone);
           }
         }
       }
@@ -247,14 +254,16 @@ export default function MultiplayerScreen() {
               <Text style={styles.potLabel}>POT</Text>
               <Text style={styles.potAmount}>{betAmount * 2} Fr.</Text>
             </View>
-            {milestoneNotification !== null && (
-              <Text style={styles.milestoneToast}>+{milestoneNotification} Fr.</Text>
+            {isLocalWinning && liveMilestones > 0 && (
+              <Text style={styles.statusBadgeWinning}>
+                +{liveMilestones * betAmount} Fr.
+              </Text>
             )}
-            {milestoneNotification === null && isSweating && (
+            {isLocalWinning && liveMilestones === 0 && (
+              <Text style={styles.statusBadgeWinning}>Scoring...</Text>
+            )}
+            {isSweating && (
               <Text style={styles.statusBadgeSweating}>Schwitzen!</Text>
-            )}
-            {milestoneNotification === null && isLocalWinning && (
-              <Text style={styles.statusBadgeWinning}>Winning!</Text>
             )}
           </View>
           <Text style={styles.titleMain}>MULTIPLAYER</Text>
@@ -314,40 +323,43 @@ export default function MultiplayerScreen() {
 
         {/* Game Over Overlay */}
         {gameOver && winner && finalScores && (() => {
+          const isWinner = winner === playerId;
+          const winnerScore = winner === 'player1' ? finalScores.player1 : finalScores.player2;
+          const loserScore = winner === 'player1' ? finalScores.player2 : finalScores.player1;
           const myScore = playerId === 'player1' ? finalScores.player1 : finalScores.player2;
           const opScore = playerId === 'player1' ? finalScores.player2 : finalScores.player1;
-          const myMilestones = Math.floor(myScore / 500);
-          const opMilestones = Math.floor(opScore / 500);
-          const myEarnings = myMilestones * betAmount;
-          const opEarnings = opMilestones * betAmount;
-          const netResult = myEarnings - opEarnings;
-          const isWinner = winner === playerId;
+
+          // Bonus: +betAmount per 500 pts above loser's crash score (no cap)
+          // Pot = base payout, bonus adds on top
+          const scoreAbove = Math.max(0, winnerScore - loserScore);
+          const milestones = Math.floor(scoreAbove / 500);
+          const bonus = milestones * betAmount;
+          const pot = betAmount * 2;
+          const totalWinnings = pot + bonus; // winner receives: pot + bonus
+
           return (
             <View style={styles.overlay}>
               <Text style={styles.gameOver}>GAME OVER</Text>
               <Text style={[styles.winner, !isWinner && styles.loser]}>
                 {isWinner ? 'YOU WIN!' : 'YOU LOST!'}
               </Text>
-              <View style={netResult >= 0 ? styles.winningsContainer : styles.lossContainer}>
-                <Text style={netResult >= 0 ? styles.winningsLabel : styles.lossLabel}>
-                  Meilensteine ({myMilestones}×500):
+
+              <View style={isWinner ? styles.winningsContainer : styles.lossContainer}>
+                <Text style={isWinner ? styles.winningsLabel : styles.lossLabel}>
+                  {isWinner ? 'Gewinn' : 'Verlust'}
                 </Text>
-                <Text style={netResult >= 0 ? styles.winningsAmount : styles.lossAmount}>
-                  {netResult >= 0 ? '+' : ''}{netResult} Fr.
+                <Text style={isWinner ? styles.winningsAmount : styles.lossAmount}>
+                  {isWinner ? `+${betAmount + bonus}` : `-${betAmount + bonus}`} Fr.
                 </Text>
-                <Text style={styles.milestoneDetail}>
-                  Du: {myMilestones}×{betAmount} Fr. = +{myEarnings} Fr.
-                </Text>
-                <Text style={styles.milestoneDetail}>
-                  Gegner: {opMilestones}×{betAmount} Fr. = -{opEarnings} Fr.
-                </Text>
+                {isWinner && betAmount > 0 && (
+                  <Text style={styles.milestoneDetail}>
+                    Pot {pot} Fr. + {milestones}×{betAmount} Fr. Bonus
+                  </Text>
+                )}
               </View>
-              <Text style={styles.scores}>
-                Dein Score: {myScore}
-              </Text>
-              <Text style={styles.scores}>
-                Gegner: {opScore}
-              </Text>
+
+              <Text style={styles.scores}>Dein Score: {myScore}</Text>
+              <Text style={styles.scores}>Gegner: {opScore}</Text>
               <Pressable style={styles.restartButton} onPress={handleRestart}>
                 <Text style={styles.restartText}>Back to Menu</Text>
               </Pressable>
@@ -406,15 +418,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 1,
-  },
-  milestoneToast: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: Colors.game.accentGold,
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(255,215,0,0.7)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   statusBadgeSweating: {
     fontSize: 11,

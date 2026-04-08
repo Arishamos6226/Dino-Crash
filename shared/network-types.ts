@@ -28,6 +28,19 @@ export interface PlaceBetPayload {
   betAmount: number;
 }
 
+export interface BetChallengePayload {
+  betAmount: number;
+}
+
+export interface BetResponsePayload {
+  roomId: string;
+  accepted: boolean;
+}
+
+export interface BothPlayersReadyPayload {
+  betAmount: number;
+}
+
 export interface PlayerInputPayload {
   roomId: string;
   playerId: 'player1' | 'player2';

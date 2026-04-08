@@ -8,27 +8,26 @@ interface SpriteProps {
   width: number;
   height: number;
   style?: ViewStyle;
-  scale?: number;
 }
 
-export const Sprite = React.memo(function Sprite({ x, y, width, height, style, scale = 1 }: SpriteProps) {
+export const Sprite = React.memo(function Sprite({ x, y, width, height, style }: SpriteProps) {
   const containerStyle = useMemo(() => [
     {
-      width: width * scale,
-      height: height * scale,
+      width,
+      height,
       overflow: 'hidden' as const,
       position: 'absolute' as const,
     },
     style,
-  ], [width, height, scale, style]);
+  ], [width, height, style]);
 
   const imageStyle = useMemo(() => ({
     position: 'absolute' as const,
-    width: SPRITE_SHEET_DIMENSIONS.WIDTH * scale,
-    height: SPRITE_SHEET_DIMENSIONS.HEIGHT * scale,
-    left: -x * scale,
-    top: -y * scale,
-  }), [x, y, scale]);
+    width: SPRITE_SHEET_DIMENSIONS.WIDTH,
+    height: SPRITE_SHEET_DIMENSIONS.HEIGHT,
+    left: -x,
+    top: -y,
+  }), [x, y]);
 
   return (
     <View style={containerStyle}>

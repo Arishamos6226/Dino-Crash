@@ -6,10 +6,9 @@ import type { DinoState } from '../types';
 interface DinoSpriteProps {
   dino: DinoState;
   bottom: number;
-  scale?: number;
 }
 
-function DinoSpriteInner({ dino, bottom, scale = 1 }: DinoSpriteProps) {
+function DinoSpriteInner({ dino, bottom }: DinoSpriteProps) {
   let sprite: { x: number; y: number; width: number; height: number };
 
   if (dino.status === 'CRASHED') {
@@ -30,10 +29,9 @@ function DinoSpriteInner({ dino, bottom, scale = 1 }: DinoSpriteProps) {
       y={sprite.y}
       width={sprite.width}
       height={sprite.height}
-      scale={scale}
       style={{
-        left: dino.x * scale,
-        bottom: bottom * scale,
+        left: dino.x,
+        bottom,
       }}
     />
   );
@@ -44,6 +42,5 @@ export const DinoSprite = React.memo(DinoSpriteInner, (prev, next) =>
   prev.dino.y === next.dino.y &&
   prev.dino.status === next.dino.status &&
   prev.dino.currentFrame === next.dino.currentFrame &&
-  prev.bottom === next.bottom &&
-  prev.scale === next.scale
+  prev.bottom === next.bottom
 );

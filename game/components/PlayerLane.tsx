@@ -17,71 +17,79 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
   const { dino, obstacles, clouds, score, gameState, nightModeFade } = renderState;
   const dinoBottom = GAME.GROUND_HEIGHT + dino.y;
 
+  const translateX = (GAME.WIDTH * scale - GAME.WIDTH) / 2;
+  const translateY = (GAME.HEIGHT * scale - GAME.HEIGHT) / 2;
+
   return (
     <View style={styles.laneContainer}>
-      <View
-        style={[
-          styles.sky,
-          nightModeFade > 0 && {
-            backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
-          },
-        ]}
-      />
+      {/* Single uniform scale transform — like canvas context.scale() */}
+      <View style={[styles.gameWorld, {
+        transform: [
+          { translateX },
+          { translateY },
+          { scale },
+        ],
+      }]}>
+        <View
+          style={[
+            styles.sky,
+            nightModeFade > 0 && {
+              backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
+            },
+          ]}
+        />
 
-      <View
-        style={[
-          styles.ground,
-          {
-            height: GAME.GROUND_HEIGHT * scale,
-            borderTopWidth: GameUI.borderWidth * scale,
-          }
-        ]}
-      />
+        <View
+          style={[
+            styles.ground,
+            {
+              height: GAME.GROUND_HEIGHT,
+              borderTopWidth: GameUI.borderWidth,
+            }
+          ]}
+        />
 
-      {clouds.map((cloud) => (
-        <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
-      ))}
+        {clouds.map((cloud) => (
+          <CloudSprite key={cloud.id} cloud={cloud} />
+        ))}
 
-      {obstacles.map((obstacle) => {
-        const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
-        return (
-          <ObstacleSprite
-            key={obstacle.id}
-            obstacle={obstacle}
-            bottom={obstacleBottom}
-            scale={scale}
-          />
-        );
-      })}
+        {obstacles.map((obstacle) => {
+          const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
+          return (
+            <ObstacleSprite
+              key={obstacle.id}
+              obstacle={obstacle}
+              bottom={obstacleBottom}
+            />
+          );
+        })}
 
-      <View style={[styles.labelContainer, { top: GameUI.scoreOffset * scale }]}>
-        <Text style={[
-          styles.label,
-          { fontSize: 10 * scale },
-          isLocal && styles.labelLocal,
-        ]}>
-          {label}
-        </Text>
-      </View>
-
-      <View style={[styles.scoreContainer, { top: GameUI.scoreOffset * scale, right: GameUI.scoreOffset * scale }]}>
-        <Text style={[styles.scoreText, { fontSize: 12 * scale }]}>
-          {String(score).padStart(5, '0')}
-        </Text>
-      </View>
-
-      {gameState === 'CRASHED' && (
-        <View style={styles.crashedOverlay}>
-          <Text style={[styles.lostText, { fontSize: 20 * scale }]}>
-            LOST
-          </Text>
-          <Text style={[styles.finalScoreText, { fontSize: 14 * scale }]}>
-            Score: {String(score).padStart(5, '0')}
+        <View style={[styles.labelContainer, { top: GameUI.scoreOffset }]}>
+          <Text style={[
+            styles.label,
+            isLocal && styles.labelLocal,
+          ]}>
+            {label}
           </Text>
         </View>
-      )}
 
-      <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
+        <View style={[styles.scoreContainer, { top: GameUI.scoreOffset, right: GameUI.scoreOffset }]}>
+          <Text style={styles.scoreText}>
+            {String(score).padStart(5, '0')}
+          </Text>
+        </View>
+
+        {gameState === 'CRASHED' && (
+          <View style={styles.crashedOverlay}>
+            <Text style={styles.lostText}>LOST</Text>
+            <Text style={styles.finalScoreText}>
+              Score: {String(score).padStart(5, '0')}
+            </Text>
+          </View>
+        )}
+
+        <DinoSprite dino={dino} bottom={dinoBottom} />
+      </View>
     </View>
   );
 }
@@ -89,8 +97,12 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
 const styles = StyleSheet.create({
   laneContainer: {
     flex: 1,
-    position: 'relative',
     overflow: 'hidden',
+  },
+  gameWorld: {
+    width: GAME.WIDTH,
+    height: GAME.HEIGHT,
+    position: 'relative',
   },
   sky: {
     ...StyleSheet.absoluteFillObject,
@@ -109,6 +121,7 @@ const styles = StyleSheet.create({
     left: 10,
   },
   label: {
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.game.textColor,
     fontFamily: 'monospace',
@@ -122,6 +135,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   scoreText: {
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.game.textColor,
     fontFamily: 'monospace',
@@ -134,6 +148,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   lostText: {
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.game.casinoRed,
     letterSpacing: 2,
@@ -142,6 +157,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   finalScoreText: {
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.game.accentGold,
     fontFamily: 'monospace',

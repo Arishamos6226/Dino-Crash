@@ -151,41 +151,50 @@ export default function HomeScreen() {
 
         <View style={styles.gameCard}>
           <View style={gameAreaStyle}>
-            <View
-              style={[
-                styles.sky,
-                nightModeFade > 0 && {
-                  backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.ground,
-                {
-                  height: GAME.GROUND_HEIGHT * scale,
-                  borderTopWidth: GameUI.borderWidth * scale,
-                }
-              ]}
-            />
+            {/* Single uniform scale transform — like canvas context.scale() */}
+            <View style={[styles.gameWorld, {
+              transform: [
+                { translateX: (gameWidth - GAME.WIDTH) / 2 },
+                { translateY: (gameHeight - GAME.HEIGHT) / 2 },
+                { scale },
+              ],
+            }]}>
+              <View
+                style={[
+                  styles.sky,
+                  nightModeFade > 0 && {
+                    backgroundColor: `${Colors.game.nightModeBase}${nightModeFade})`,
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  styles.ground,
+                  {
+                    height: GAME.GROUND_HEIGHT,
+                    borderTopWidth: GameUI.borderWidth,
+                  }
+                ]}
+              />
 
-            {clouds.map((cloud) => (
-              <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
-            ))}
+              {clouds.map((cloud) => (
+                <CloudSprite key={cloud.id} cloud={cloud} />
+              ))}
 
-            <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
+              <DinoSprite dino={dino} bottom={dinoBottom} />
 
-            {obstacles.map((obstacle) => {
-              const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
-              return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} scale={scale} />;
-            })}
+              {obstacles.map((obstacle) => {
+                const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
+                return <ObstacleSprite key={obstacle.id} obstacle={obstacle} bottom={obstacleBottom} />;
+              })}
 
-            {gameState === 'CRASHED' && (
-              <View style={styles.overlay}>
-                <Text style={[styles.gameOver, { fontSize: 26 * Math.min(scale, 1.5) }]}>GAME OVER</Text>
-                <Text style={[styles.restart, { fontSize: 13 * Math.min(scale, 1.5) }]}>Tippen zum Neustart</Text>
-              </View>
-            )}
+              {gameState === 'CRASHED' && (
+                <View style={styles.overlay}>
+                  <Text style={styles.gameOver}>GAME OVER</Text>
+                  <Text style={styles.restart}>Tippen zum Neustart</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -263,8 +272,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,215,0,0.2)',
     backgroundColor: Colors.game.gameBackground,
     overflow: 'hidden',
-    position: 'relative',
     borderRadius: 16,
+  },
+  gameWorld: {
+    width: GAME.WIDTH,
+    height: GAME.HEIGHT,
+    position: 'relative',
   },
   sky: {
     ...StyleSheet.absoluteFillObject,
@@ -286,11 +299,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gameOver: {
+    fontSize: 26,
     fontWeight: '800',
     color: Colors.game.textColor,
     letterSpacing: 2,
   },
   restart: {
+    fontSize: 13,
     color: Colors.game.subtitleText,
     opacity: 0.7,
   },

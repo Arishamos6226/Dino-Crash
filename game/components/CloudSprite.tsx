@@ -5,10 +5,9 @@ import type { CloudState } from '../types';
 
 interface CloudSpriteProps {
   cloud: CloudState;
-  scale?: number;
 }
 
-function CloudSpriteInner({ cloud, scale = 1 }: CloudSpriteProps) {
+function CloudSpriteInner({ cloud }: CloudSpriteProps) {
   const sprite = SPRITES.CLOUD;
 
   return (
@@ -17,10 +16,9 @@ function CloudSpriteInner({ cloud, scale = 1 }: CloudSpriteProps) {
       y={sprite.y}
       width={sprite.width}
       height={sprite.height}
-      scale={scale}
       style={{
-        left: cloud.x * scale,
-        top: cloud.y * scale,
+        left: cloud.x,
+        top: cloud.y,
       }}
     />
   );
@@ -28,6 +26,5 @@ function CloudSpriteInner({ cloud, scale = 1 }: CloudSpriteProps) {
 
 export const CloudSprite = React.memo(CloudSpriteInner, (prev, next) =>
   prev.cloud.x === next.cloud.x &&
-  prev.cloud.y === next.cloud.y &&
-  prev.scale === next.scale
+  prev.cloud.y === next.cloud.y
 );
