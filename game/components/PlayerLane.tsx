@@ -42,8 +42,6 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
         <CloudSprite key={cloud.id} cloud={cloud} scale={scale} />
       ))}
 
-      <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
-
       {obstacles.map((obstacle) => {
         const obstacleBottom = GAME.GROUND_HEIGHT + obstacle.y;
         return (
@@ -78,6 +76,8 @@ export function PlayerLane({ renderState, scale, label, isLocal }: PlayerLanePro
           </Text>
         </View>
       )}
+
+      <DinoSprite dino={dino} bottom={dinoBottom} scale={scale} />
     </View>
   );
 }

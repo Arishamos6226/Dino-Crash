@@ -175,10 +175,12 @@ export class GameRoom {
 
   cleanup() {
     // Remove all listeners
+    this.player1.removeAllListeners('place_bet');
     this.player1.removeAllListeners('player_input');
     this.player1.removeAllListeners('player_crash');
     this.player1.removeAllListeners('disconnect');
 
+    this.player2.removeAllListeners('place_bet');
     this.player2.removeAllListeners('player_input');
     this.player2.removeAllListeners('player_crash');
     this.player2.removeAllListeners('disconnect');

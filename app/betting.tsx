@@ -1,41 +1,60 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../constants/theme';
 import NetworkManager from '../game/network/NetworkManager';
 
-const BET_AMOUNTS = [10, 25, 50, 100, 250];
+const BET_AMOUNTS = [1, 2, 5, 10, 20];
 
 export default function BettingScreen() {
   const params = useLocalSearchParams<{ roomId: string; playerId: string; seed: string }>();
   const router = useRouter();
   const [selectedBet, setSelectedBet] = useState(50);
-  const [customBet, setCustomBet] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
+  const navigatedRef = useRef(false);
+
+  useEffect(() => {
+    const networkManager = NetworkManager.getInstance();
+
+    const handleOpponentLeft = () => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      networkManager.disconnect();
+      router.replace('/(tabs)/lobby');
+    };
+
+    networkManager.onGameOver(handleOpponentLeft);
+
+    return () => {
+      networkManager.offGameOver(handleOpponentLeft);
+    };
+  }, [router]);
 
   const handlePlaceBet = () => {
-    const betAmount = customBet ? parseInt(customBet) : selectedBet;
-
-    if (betAmount < 1) return;
+    if (selectedBet < 1) return;
 
     setIsWaiting(true);
     const networkManager = NetworkManager.getInstance();
 
-    networkManager.placeBet(params.roomId, betAmount);
+    networkManager.placeBet(params.roomId, selectedBet);
 
     networkManager.onBothPlayersReady(() => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
       router.replace({
         pathname: '/multiplayer',
         params: {
           seed: params.seed,
           playerId: params.playerId,
-          betAmount: betAmount.toString(),
+          betAmount: selectedBet.toString(),
         }
       });
     });
   };
 
   const handleBackToMenu = () => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
     const networkManager = NetworkManager.getInstance();
     networkManager.disconnect();
     router.replace('/(tabs)/lobby');
@@ -46,7 +65,7 @@ export default function BettingScreen() {
       <View style={styles.card}>
         <View style={styles.header}>
           <Text style={styles.title}>🎰 PLACE YOUR BET 🎰</Text>
-          <Text style={styles.subtitle}>Fleischkäulen wetten</Text>
+          <Text style={styles.subtitle}>Franken wetten</Text>
         </View>
 
         <View style={styles.content}>
@@ -56,31 +75,14 @@ export default function BettingScreen() {
                 key={amount}
                 style={[
                   styles.betButton,
-                  selectedBet === amount && !customBet && styles.betButtonActive
+                  selectedBet === amount && styles.betButtonActive
                 ]}
-                onPress={() => {
-                  setSelectedBet(amount);
-                  setCustomBet('');
-                }}
+                onPress={() => setSelectedBet(amount)}
               >
                 <Text style={styles.betAmount}>{amount}</Text>
-                <Text style={styles.betLabel}>Käulen</Text>
+                <Text style={styles.betLabel}>Fr.</Text>
               </Pressable>
             ))}
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.customBetContainer}>
-            <Text style={styles.customLabel}>Custom Bet</Text>
-            <TextInput
-              style={styles.customInput}
-              value={customBet}
-              onChangeText={setCustomBet}
-              keyboardType="numeric"
-              placeholder="Enter amount"
-              placeholderTextColor={Colors.game.subtitleText}
-            />
           </View>
 
           <View style={styles.warningBox}>
@@ -91,12 +93,15 @@ export default function BettingScreen() {
         {isWaiting ? (
           <View style={styles.waitingContainer}>
             <Text style={styles.waitingText}>Waiting for opponent...</Text>
+            <Pressable style={styles.backButton} onPress={handleBackToMenu}>
+              <Text style={styles.backText}>Back to Menu</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.actions}>
             <Pressable style={styles.confirmButton} onPress={handlePlaceBet}>
               <Text style={styles.confirmText}>
-                BET {customBet || selectedBet} KÄULEN
+                BET {selectedBet} KÄULEN
               </Text>
             </Pressable>
             <Pressable style={styles.backButton} onPress={handleBackToMenu}>
@@ -192,31 +197,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.game.accentGold,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.game.accentGold,
-    opacity: 0.2,
-  },
-  customBetContainer: {
-    gap: 10,
-  },
-  customLabel: {
-    fontSize: 15,
-    color: Colors.game.accentGold,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  customInput: {
-    backgroundColor: Colors.game.casinoBlack,
-    color: Colors.game.accentGold,
-    fontSize: 20,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.game.accentGold,
-    textAlign: 'center',
-    fontWeight: '900',
   },
   warningBox: {
     backgroundColor: 'rgba(255, 0, 0, 0.1)',

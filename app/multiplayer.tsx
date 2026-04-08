@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MultiplayerGameEngine } from '../game/MultiplayerGameEngine';
 import type { MultiplayerRenderState } from '../game/MultiplayerGameEngine';
@@ -10,8 +11,8 @@ import NetworkManager from '../game/network/NetworkManager';
 import { Colors, GameUI } from '../constants/theme';
 
 const HOLD_DURATION_MS = 200;
-const RESERVED_UI_HEIGHT = 120;
-const LANE_SPACING = 20;
+const RESERVED_UI_HEIGHT = 80;
+const LANE_SPACING = 12;
 
 export default function MultiplayerScreen() {
   const params = useLocalSearchParams<{
@@ -48,24 +49,33 @@ export default function MultiplayerScreen() {
   const [winner, setWinner] = useState<'player1' | 'player2' | null>(null);
   const [finalScores, setFinalScores] = useState<{ player1: number; player2: number } | null>(null);
   const crashSentRef = useRef(false);
+  const opponentCrashScoreRef = useRef<number | null>(null);
 
   const networkManager = NetworkManager.getInstance();
 
   useEffect(() => {
-    networkManager.onOpponentInput((payload) => {
+    const handleOpponentInput = (payload: { input: any }) => {
       if (!engineRef.current) return;
       const opponentId = playerId === 'player1' ? 'player2' : 'player1';
       engineRef.current.applyInput(opponentId, payload.input);
-    });
+    };
 
-    networkManager.onGameOver((payload) => {
+    const handleGameOver = (payload: { winnerId: 'player1' | 'player2'; player1Score: number; player2Score: number }) => {
       setWinner(payload.winnerId);
       setFinalScores({
         player1: payload.player1Score,
         player2: payload.player2Score
       });
       setGameOver(true);
-    });
+    };
+
+    networkManager.onOpponentInput(handleOpponentInput);
+    networkManager.onGameOver(handleGameOver);
+
+    return () => {
+      networkManager.offOpponentInput(handleOpponentInput);
+      networkManager.offGameOver(handleGameOver);
+    };
   }, [playerId]);
 
   useEffect(() => {
@@ -158,6 +168,7 @@ export default function MultiplayerScreen() {
   }, [isDucking, handleDuckEnd, handleJump]);
 
   const handleRestart = useCallback(() => {
+    networkManager.disconnect();
     router.replace('/(tabs)/lobby');
   }, [router]);
 
@@ -206,182 +217,257 @@ export default function MultiplayerScreen() {
   const isLocalCrashed = localState.gameState === 'CRASHED';
   const isOpponentCrashed = opponentState.gameState === 'CRASHED';
   const isSweating = isLocalCrashed && !isOpponentCrashed && !gameOver;
+  const isLocalWinning = isOpponentCrashed && !isLocalCrashed && !gameOver;
 
-  const scoreDifference = opponentState.score - localState.score;
-  const potentialWinnings = isSweating ? betAmount * 2 + Math.floor(scoreDifference / 100) * betAmount * 0.1 : betAmount * 2;
+  // Capture opponent's score the moment they crash
+  if (isOpponentCrashed && opponentCrashScoreRef.current === null) {
+    opponentCrashScoreRef.current = opponentState.score;
+  }
+
+  // Live bonus: every 500 score above opponent's crash score earns betAmount Fr.
+  const opponentCrashScore = opponentCrashScoreRef.current ?? opponentState.score;
+  const liveBonus = isLocalWinning
+    ? Math.max(0, Math.floor((localState.score - opponentCrashScore) / 500)) * betAmount
+    : 0;
+  const livePotential = betAmount * 2 + liveBonus;
+
+  // Final winnings at game over
+  const myFinalScore = finalScores ? (playerId === 'player1' ? finalScores.player1 : finalScores.player2) : 0;
+  const oppFinalScore = finalScores ? (playerId === 'player1' ? finalScores.player2 : finalScores.player1) : 0;
+  const finalBonus = (winner === playerId && finalScores)
+    ? Math.max(0, Math.floor((myFinalScore - oppFinalScore) / 500)) * betAmount
+    : 0;
+  const totalWinnings = betAmount * 2 + finalBonus;
 
   return (
-    <Pressable
-      onPressIn={handleTouchStart}
-      onPressOut={handleTouchEnd}
-      disabled={isLocalCrashed}
-      style={styles.page}
-    >
-      <View style={styles.header}>
-        <View style={styles.potContainer}>
-          <Text style={styles.potLabel}>💰 PRIZE POT</Text>
-          <Text style={styles.potAmount}>{betAmount * 2} Käulen</Text>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <Pressable
+        onPressIn={handleTouchStart}
+        onPressOut={handleTouchEnd}
+        disabled={isLocalCrashed}
+        style={styles.page}
+      >
+        {/* Header: pot left, title right */}
+        <View style={styles.header}>
+          {isSweating ? (
+            <View style={styles.sweatingBanner}>
+              <Text style={styles.sweatingTitle}>😰 SCHWITZEN!</Text>
+            </View>
+          ) : isLocalWinning ? (
+            <View style={styles.winningBanner}>
+              <Text style={styles.winningTitle}>🏆 +{liveBonus} Fr. Bonus</Text>
+              <Text style={styles.winningSubtext}>Pot: {livePotential} Fr. • alle 500 Pkt. +{betAmount} Fr.</Text>
+            </View>
+          ) : (
+            <View style={styles.potContainer}>
+              <Text style={styles.potLabel}>💰 POT</Text>
+              <Text style={styles.potAmount}>{betAmount * 2} Fr.</Text>
+            </View>
+          )}
+          <View style={styles.titleBlock}>
+            <Text style={styles.titleMain}>MULTIPLAYER</Text>
+            <Text style={styles.titleSub}>Franken wetten</Text>
+          </View>
         </View>
-        {isSweating && (
-          <View style={styles.sweatingBanner}>
-            <Text style={styles.sweatingTitle}>😰 SCHWITZEN! 😰</Text>
-            <Text style={styles.sweatingSubtext}>Gegner Gewinn: {Math.floor(potentialWinnings)}</Text>
+
+        <View style={styles.gameContainer}>
+          {/* Player 1 Lane */}
+          <View style={styles.playerSection}>
+            <View
+              style={[
+                styles.laneWrapper,
+                {
+                  width: gameWidth,
+                  height: gameHeight,
+                  borderColor: playerId === 'player1' ? Colors.game.casinoGold : Colors.game.borderColor,
+                }
+              ]}
+            >
+              <PlayerLane
+                renderState={renderState.player1}
+                scale={scale}
+                label="PLAYER 1"
+                isLocal={playerId === 'player1'}
+              />
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Player 2 Lane */}
+          <View style={styles.playerSection}>
+            <View
+              style={[
+                styles.laneWrapper,
+                {
+                  width: gameWidth,
+                  height: gameHeight,
+                  borderColor: playerId === 'player2' ? Colors.game.casinoGold : Colors.game.borderColor,
+                }
+              ]}
+            >
+              <PlayerLane
+                renderState={renderState.player2}
+                scale={scale}
+                label="PLAYER 2"
+                isLocal={playerId === 'player2'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Game Over Overlay */}
+        {gameOver && winner && finalScores && (
+          <View style={styles.overlay}>
+            <Text style={styles.gameOver}>GAME OVER</Text>
+            <Text style={[styles.winner, winner !== playerId && styles.loser]}>
+              {winner === playerId ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
+            </Text>
+            {winner === playerId && (
+              <View style={styles.winningsContainer}>
+                <Text style={styles.winningsLabel}>Gewinn:</Text>
+                <Text style={styles.winningsAmount}>+{totalWinnings} Fr.</Text>
+                {finalBonus > 0 && (
+                  <Text style={styles.winningsBonus}>inkl. {finalBonus} Fr. Bonus</Text>
+                )}
+              </View>
+            )}
+            {winner !== playerId && (
+              <View style={styles.lossContainer}>
+                <Text style={styles.lossLabel}>Verlust:</Text>
+                <Text style={styles.lossAmount}>-{betAmount} Fr.</Text>
+              </View>
+            )}
+            <Text style={styles.scores}>
+              Your Score: {playerId === 'player1' ? finalScores.player1 : finalScores.player2}
+            </Text>
+            <Text style={styles.scores}>
+              Opponent: {playerId === 'player1' ? finalScores.player2 : finalScores.player1}
+            </Text>
+            <Pressable style={styles.restartButton} onPress={handleRestart}>
+              <Text style={styles.restartText}>Back to Menu</Text>
+            </Pressable>
           </View>
         )}
-      </View>
-
-      <View style={styles.gameContainer}>
-        {/* Player 1 Section */}
-        <View style={styles.playerSection}>
-          <View
-            style={[
-              styles.laneWrapper,
-              {
-                width: gameWidth,
-                height: gameHeight,
-                borderWidth: 4,
-                borderColor: playerId === 'player1' ? Colors.game.casinoGold : Colors.game.borderColor,
-              }
-            ]}
-          >
-            <PlayerLane
-              renderState={renderState.player1}
-              scale={scale}
-              label="PLAYER 1"
-              isLocal={playerId === 'player1'}
-            />
-          </View>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* Player 2 Section */}
-        <View style={styles.playerSection}>
-          <View
-            style={[
-              styles.laneWrapper,
-              {
-                width: gameWidth,
-                height: gameHeight,
-                borderWidth: 4,
-                borderColor: playerId === 'player2' ? Colors.game.casinoGold : Colors.game.borderColor,
-              }
-            ]}
-          >
-            <PlayerLane
-              renderState={renderState.player2}
-              scale={scale}
-              label="PLAYER 2"
-              isLocal={playerId === 'player2'}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Game Over Overlay */}
-      {gameOver && winner && finalScores && (
-        <View style={styles.overlay}>
-          <Text style={styles.gameOver}>GAME OVER</Text>
-          <Text style={[styles.winner, winner !== playerId && styles.loser]}>
-            {winner === playerId ? '🎉 YOU WIN! 🎉' : '💀 YOU LOST! 💀'}
-          </Text>
-          {winner === playerId && (
-            <View style={styles.winningsContainer}>
-              <Text style={styles.winningsLabel}>Gewinn:</Text>
-              <Text style={styles.winningsAmount}>+{Math.floor(potentialWinnings)} Käulen</Text>
-            </View>
-          )}
-          {winner !== playerId && (
-            <View style={styles.lossContainer}>
-              <Text style={styles.lossLabel}>Verlust:</Text>
-              <Text style={styles.lossAmount}>-{betAmount} Käulen</Text>
-            </View>
-          )}
-          <Text style={styles.scores}>
-            Your Score: {playerId === 'player1' ? finalScores.player1 : finalScores.player2}
-          </Text>
-          <Text style={styles.scores}>
-            Opponent: {playerId === 'player1' ? finalScores.player2 : finalScores.player1}
-          </Text>
-          <Pressable style={styles.restartButton} onPress={handleRestart}>
-            <Text style={styles.restartText}>Back to Menu</Text>
-          </Pressable>
-        </View>
-      )}
-    </Pressable>
+      </Pressable>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
+  root: {
     flex: 1,
     backgroundColor: Colors.game.pageBackground,
+  },
+  page: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
     padding: GameUI.pagePadding,
-    paddingTop: 8,
   },
+
+  /* ── Header ── */
   header: {
     width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-    gap: 6,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   potContainer: {
     backgroundColor: Colors.game.gameBackground,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 3,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: Colors.game.accentGold,
     alignItems: 'center',
-    gap: 4,
     shadowColor: Colors.game.accentGold,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 4,
   },
   potLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.game.subtitleText,
     fontWeight: '700',
     letterSpacing: 1,
   },
   potAmount: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 1,
   },
   sweatingBanner: {
     backgroundColor: Colors.game.casinoRed,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
     alignItems: 'center',
-    width: '100%',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: Colors.game.accentGold,
-    gap: 4,
     shadowColor: Colors.game.casinoRed,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 4,
   },
   sweatingTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
-    color: Colors.game.casinoBlack,
+    color: Colors.game.accentGold,
     letterSpacing: 1,
   },
-  sweatingSubtext: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.game.accentGold,
+  winningBanner: {
+    backgroundColor: 'rgba(0,180,0,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.game.accentGold,
+    shadowColor: Colors.game.accentGold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 4,
   },
+  winningTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 1,
+  },
+  winningSubtext: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.game.subtitleText,
+    marginTop: 2,
+  },
+  titleBlock: {
+    alignItems: 'flex-end',
+  },
+  titleMain: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: Colors.game.accentGold,
+    letterSpacing: 2,
+    textShadowColor: 'rgba(255,215,0,0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  titleSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.game.subtitleText,
+    marginTop: 1,
+  },
+
+  /* ── Game ── */
   gameContainer: {
     width: '100%',
     flex: 1,
@@ -390,12 +476,12 @@ const styles = StyleSheet.create({
   },
   playerSection: {
     alignItems: 'center',
-    gap: 12,
   },
   laneWrapper: {
     backgroundColor: Colors.game.gameBackground,
     overflow: 'hidden',
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 3,
     shadowColor: Colors.game.accentGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -404,8 +490,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    width: '80%',
-    backgroundColor: Colors.game.borderColor,
+    width: '60%',
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderRadius: 1,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -462,6 +549,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.game.accentGold,
     letterSpacing: 1,
+  },
+  winningsBonus: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.game.subtitleText,
+    marginTop: 2,
   },
   lossContainer: {
     backgroundColor: Colors.game.gameBackground,

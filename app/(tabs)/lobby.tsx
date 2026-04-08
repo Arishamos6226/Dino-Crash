@@ -7,7 +7,7 @@ import { Colors, GameUI } from '../../constants/theme';
 
 const SERVER_URL = Platform.OS === 'web'
   ? 'http://localhost:3001'
-  : 'http://192.168.1.107:3001';
+  : 'http://172.20.10.2:3001';
 
 const GAME_START_DELAY_MS = 1000;
 

@@ -96,9 +96,19 @@ class NetworkManager {
     this.socket.on('opponent_input', callback);
   }
 
+  offOpponentInput(callback: (payload: OpponentInputPayload) => void) {
+    if (!this.socket) return;
+    this.socket.off('opponent_input', callback);
+  }
+
   onGameOver(callback: (payload: GameOverPayload) => void) {
     if (!this.socket) return;
     this.socket.on('game_over', callback);
+  }
+
+  offGameOver(callback: (payload: GameOverPayload) => void) {
+    if (!this.socket) return;
+    this.socket.off('game_over', callback);
   }
 
   onMatchmakingStatus(callback: (status: { status: string }) => void) {
